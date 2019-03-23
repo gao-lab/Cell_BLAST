@@ -1,0 +1,8 @@
+﻿cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+alveolar type 1,,type I pneumocyte,CL:0002062,exact,Wang_lung
+alveolar type 2,,type II pneumocyte,CL:0002063,exact,Wang_lung
+mesenchyme,,mesenchymal cell,CL:0008019,exact,Lee
+,,,,,
+,,,,,
+,,,,,
+,,,,,

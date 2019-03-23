@@ -1,0 +1,67 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+Tanycyte2,,tanycyte,CL:0002085,exact,Campbell
+Neurons3,,neuron,CL:0000540,exact,Campbell
+Neurons6,,neuron,CL:0000540,exact,Campbell
+Tanycyte1,,tanycyte,CL:0002085,exact,Campbell
+PVMMicro,,macrophage,CL:0000235,exact,Campbell
+Endothelial_Cells,,endothelial cell,CL:0000115,exact,Campbell
+Ependymocytes,,ependymal cell,CL:0000065,exact,Campbell
+ParsTuber2,pars tuberalis,,,,Campbell
+Neurons5,,neuron,CL:0000540,exact,Campbell
+Neurons4,,neuron,CL:0000540,exact,Campbell
+NG2/OPC,oligodendrocyte precursor cells/NG2 cells,,,,Campbell
+Mural_Cells,pericytes and vascular smooth muscle cells,,,,Campbell
+Neurons2,,neuron,CL:0000540,exact,Campbell
+Oligodend3,,oligodendrocyte,CL:0000128,exact,Campbell
+Oligodend1,,oligodendrocyte,CL:0000128,exact,Campbell
+VLMC,vascular and leptomeningeal cell,,,,Campbell
+ParsTuber1,pars tuberalis,,,,Campbell
+Astrocyte,,astrocyte,CL:0000127,exact,Campbell
+Oligodend2,,oligodendrocyte,CL:0000128,exact,Campbell
+Neurons1,,neuron,CL:0000540,exact,Campbell
+Astro,astrocytes,astrocyte,CL:0000127,exact,Chen
+Ependy,ependymocyte,ependymal cell,CL:0000065,exact,Chen
+Epith1,epithelial cell,epithelial cell,CL:0000066,exact,Chen
+Epith2,epithelial cell,epithelial cell,CL:0000066,exact,Chen
+GABA1,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA2,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA3,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA4,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA5,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA6,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA7,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA8,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA9,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA10,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA11,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA12,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA13,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA14,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA15,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA16,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA17,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+GABA18,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
+Glu1,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu2,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu3,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu4,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu5,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu6,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu7,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu8,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu9,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu10,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu11,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu12,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu13,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu14,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Glu15,glutamatergic neuron,glutamatergic neuron,CL:0000679,exact,Chen
+Hista,histaminergic neuron,histaminergic neuron,CL:0011110,exact,Chen
+IMO,,oligodendrocyte,CL:0000128,higher,Chen
+Macro,macrophage,macrophage,CL:0000235,exact,Chen
+Micro,microglia,microglial cell,CL:0000129,exact,Chen
+MO,myelinating oligodendrocyte,oligodendrocyte,CL:0000128,higher,Chen
+OPC,oligodendrocyte precursor cell,oligodendrocyte precursor cell,CL:0002453,exact,Chen
+POPC,proliferating oligodendrocyte precursor cell,oligodendrocyte precursor cell,CL:0002453,similar,Chen
+SCO,,oligodendrocyte,CL:0000128,higher,Chen
+Tany,tanycyte,tanycyte,CL:0002085,exact,Chen

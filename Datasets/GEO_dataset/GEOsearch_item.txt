@@ -1,0 +1,13 @@
+(
+    "expression profiling by high throughput sequencing"[DataSet Type] OR
+    "expression profiling by high throughput sequencing"[Filter] OR
+    "high throughput sequencing"[Platform Technology Type]
+) AND
+    "gse"[Entry Type] AND
+(
+    "single cell"[Title/Abstract] OR
+    "single-cell"[Title/Abstract]
+) AND
+("2013"[Publication Date] : "3000"[Publication Date]) AND
+"supplementary"[Filter]
+

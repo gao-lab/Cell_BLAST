@@ -1,0 +1,33 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+dNK2,decidual natural killer cell,decidual natural killer cell,CL:0002343,exact,Vento-Tormo_10x
+dNK1,decidual natural killer cell,decidual natural killer cell,CL:0002343,exact,Vento-Tormo_10x
+Tcells,T cell,T cell,CL:0000084,exact,Vento-Tormo_10x
+dNK3,decidual natural killer cell,decidual natural killer cell,CL:0002343,exact,Vento-Tormo_10x
+dM2,decidual macrophages,macrophage,CL:0000235,exact,Vento-Tormo_10x
+dM1,decidual macrophages,macrophage,CL:0000235,exact,Vento-Tormo_10x
+dNK p,decidual natural killer cell,decidual natural killer cell,CL:0002343,exact,Vento-Tormo_10x
+Granulocytes,Granulocytes,granulocyte,CL:0000094,exact,Vento-Tormo_10x
+EVT,extravillous trophoblast,trophoblast cell,CL:0000351,larger than actual,Vento-Tormo_10x
+NK CD16+,natural killer cell,natural killer cell,CL:0000623,exact,Vento-Tormo_10x
+Plasma,plasma cell,plasma cell,CL:0000786,exact,Vento-Tormo_10x
+dS2,decidual stromal cells,stromal cell,CL:0000499,larger than actual,Vento-Tormo_10x
+dM3,decidual macrophages,macrophage,CL:0000235,exact,Vento-Tormo_10x
+dS3,decidual stromal cells,stromal cell,CL:0000499,larger than actual,Vento-Tormo_10x
+DC1,dendritic cells,dendritic cell,CL:0000451,exact,Vento-Tormo_10x
+Epi2,epithelial glandular cells,glandular epithelial cell,CL:0000150,exact,Vento-Tormo_10x
+ILC3,innate lymphocyte cells,lymphocyte,CL:0000542,larger than actual,Vento-Tormo_10x
+dS1,decidual stromal cells,stromal cell,CL:0000499,larger than actual,Vento-Tormo_10x
+Endo (m),endothelial cells,endothelial cell,CL:0000115,exact,Vento-Tormo_10x
+VCT,villous cytotrophoblast,placental villous trophoblast,CL:2000060,exact,Vento-Tormo_10x
+dP1,,,,,Vento-Tormo_10x
+Endo L,endothelial cells,endothelial cell,CL:0000115,exact,Vento-Tormo_10x
+Epi1,epithelial glandular cells,glandular epithelial cell,CL:0000150,exact,Vento-Tormo_10x
+dP2,,,,,Vento-Tormo_10x
+SCT,syncytiotrophoblast,syncytiotrophoblast cell,CL:0000525,exact,Vento-Tormo_10x
+HB,Hofbauer cells,Hofbauer cell,CL:2000099,new term,Vento-Tormo_10x
+Endo (f),endothelial cells,endothelial cell,CL:0000115,exact,Vento-Tormo_10x
+MO,monocyte,monocyte,CL:0000576,exact,Vento-Tormo_10x
+fFB1,fibroblasts,fibroblast,CL:0000057,exact,Vento-Tormo_10x
+fFB2,fibroblasts,fibroblast,CL:0000057,exact,Vento-Tormo_10x
+DC2,dendritic cells,dendritic cell,CL:0000451,exact,Vento-Tormo_10x
+NK CD16-,natural killer cell,natural killer cell,CL:0000623,exact,Vento-Tormo_10x

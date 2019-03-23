@@ -1,0 +1,15 @@
+cell_type1,cell_ontology_class,cell_ontology_id,annotation,study
+undifferentiated cells,,,,Alles
+developing midgut,larval midgut cell,CL:0009003,exact,Alles
+neurogenesis,neuronal stem cell,CL:0000047,exact,Alles
+head mesoderm/hemocyte differentiation,mesodermal cell,CL:0000222,larger than actual,Alles
+muscle,muscle cell,CL:0000187,exact,Alles
+visceral muscle,visceral muscle cell,CL:0008007,exact,Alles
+epidermis,epidermal cell,CL:0000362,exact,Alles
+amnioserosa,amnioserosal cell,CL:0000350,exact,Alles
+neurons,neuron,CL:0000540,exact,Alles
+yolk,yolk cell,CL:0000428,exact,Alles
+midgut,larval midgut cell,CL:0009003,exact,Alles
+fat body,fat body cell,CL:0000565,exact,Alles
+germ cells,germ cell,CL:0000586,exact,Alles
+LVM longitudinal visc. muscle,visceral muscle cell,CL:0008007,larger than actual,Alles

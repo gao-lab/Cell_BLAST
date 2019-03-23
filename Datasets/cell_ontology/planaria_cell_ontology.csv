@@ -1,0 +1,10 @@
+cell_type1,cell_ontology_class,cell_ontology_id,annotation,study
+Neoblast,,,,Fincher
+Epidermal,epidermal cell,CL:0000362,exact,Fincher
+Cathepsin+ cells,,,,Fincher
+Intestine,,,,Fincher
+Pharynx,,,,Fincher
+Parapharyngeal,,,,Fincher
+Neural,neural cell,CL:0002319,exact,Fincher
+Muscle,muscle cell,CL:0000187,exact,Fincher
+Protonephridia,,,,Fincher

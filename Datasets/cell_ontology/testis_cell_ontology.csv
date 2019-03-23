@@ -1,0 +1,13 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id
+SSC,spermatogonial stem cell,male germ line stem cell,CL:0000089
+differentiating S'gonia,differentiating spermatogonia,spermatogonium,CL:0000020
+early primary S'cytes,early primary spermatocyte,primary spermatocyte,CL:0000656
+late primary S'cytes,late primary spermatocyte,primary spermatocyte,CL:0000656
+round S'tids,round spermatid,spermatid,CL:0000018
+elongated S'tids,elongated spermatid,spermatid,CL:0000018
+sperm,sperm,sperm,CL:0000019
+macrophage,testicular macrophage,macrophage,CL:0000235
+endothelial cell,endothelial cell,endothelial cell,CL:0000115
+myoid cell,myoid cell,smooth muscle cell,CL:0000192
+sertoli cell,sertoli cell,Sertoli cell,CL:0000216
+leydig cell,leydig cell,Leydig cell,CL:0000178

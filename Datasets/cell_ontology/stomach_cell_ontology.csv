@@ -1,0 +1,6 @@
+cell_type1,cell_ontology_class,cell_ontology_id,remark,study
+multipotent progenitor cell,,,,Gao_Stomach
+HES1Highprogenitor cell,,,,Gao_Stomach
+parietal progenitor cell,parietal cell,CL:0000162,exact,Gao_Stomach
+progenitors of the pit cell,,,gastric pit,Gao_Stomach
+pit cell,,,gastric pit,Gao_Stomach

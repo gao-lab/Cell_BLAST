@@ -1,0 +1,12 @@
+cell_type1,cell_ontology_class,cell_ontology_id,remark,study
+DCLK1+ progenitor cell,,,,Gao_Large_intestine
+MKI67+ progenitor cell,,,,Gao_Large_intestine
+PROM1High progenitor cell,,,,Gao_Large_intestine
+PROM1Low progenitor cell,,,,Gao_Large_intestine
+LGR5+ stem cell,stem cell,CL:0000034,exact,Gao_Large_intestine
+secretory progenitor cell,,,,Gao_Large_intestine
+goblet progenitor cell,large intestine goblet cell,CL:1000320,similar,Gao_Large_intestine
+goblet cell,large intestine goblet cell,CL:1000320,exact,Gao_Large_intestine
+enteroendocrine cell,enteroendocrine cell,CL:0000164,exact,Gao_Large_intestine
+enterocyte cell,enterocyte of epithelium of large intestine,CL:0002071,exact,Gao_Large_intestine
+Paneth-Like cell,paneth cell,CL:0000510,exact,Gao_Large_intestine

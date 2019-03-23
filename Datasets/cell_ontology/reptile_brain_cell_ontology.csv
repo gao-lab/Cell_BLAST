@@ -1,0 +1,19 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+OPC,oligodendrocyte precursor cell,oligodendrocyte precursor cell,CL:0002453,exact,Tosches
+Leu,leucocytes ,leukocyte,CL:0000738,exact,Tosches
+Olig,mature oligodendrocyte ,oligodendrocyte,CL:0000128,exact,Tosches
+Exc2,glutamatergic excitatory neurons ,glutamatergic neuron,CL:0000679,exact,Tosches
+MG,microglia ,microglial cell,CL:0000129,exact,Tosches
+Exc3,glutamatergic excitatory neurons ,glutamatergic neuron,CL:0000679,exact,Tosches
+Exc4,glutamatergic excitatory neurons ,glutamatergic neuron,CL:0000679,exact,Tosches
+Exc5,glutamatergic excitatory neurons ,glutamatergic neuron,CL:0000679,exact,Tosches
+Exc1,glutamatergic excitatory neurons ,glutamatergic neuron,CL:0000679,exact,Tosches
+EG,ependymoglial cell ,ependymoglial cell,CL:0000683,exact,Tosches
+NPC,neural progenitor cell ,,,,Tosches
+Inh1,GABAergic inhibitory interneurons,GABAergic inhibitory interneuron,CL:2000104,exact,Tosches
+Inh2,GABAergic inhibitory interneurons ,GABAergic inhibitory interneuron,CL:2000104,exact,Tosches
+Vend,vascular endothelial cell,endothelial cell of vascular tree,CL:0002139,exact,Tosches
+Mur,mural cells ,,,,Tosches
+NPCs,neural progenitor cell ,,,,Tosches
+LeuT,leucocytes ,leukocyte,CL:0000738,exact,Tosches
+LeuB,leucocytes ,leukocyte,CL:0000738,exact,Tosches

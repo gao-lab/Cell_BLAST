@@ -1,0 +1,28 @@
+cell_type1,cell_ontology_class,cell_ontology_id,remark,study
+Unclassified neurons,neuron,CL:0000540,exact,Cao
+Germline,germ line cell,CL:0000039,exact,Cao
+Intestinal/rectal muscle,visceral muscle cell,CL:0008007,exact,Cao
+Coelomocytes,coelomocyte,CL:0000421,exact,Cao
+Ciliated sensory neurons,ciliated sensory neuron,CL:2000100,exact,Cao
+Seam cells,seam cell,CL:0000419,exact,Cao
+Non-seam hypodermis,epidermal cell,CL:0000362,larger than actual,Cao
+Pharyngeal epithelia,nasopharyngeal epithelial cell,CL:1001573,larger than actual,Cao
+Touch receptor neurons,sensory neuron,CL:0000101,larger than actual,Cao
+Body wall muscle,muscle cell,CL:0000187,larger than actual,Cao
+Cholinergic neurons,cholinergic neuron,CL:0000108,exact,Cao
+Distal tip cells,distal tip cell (sensu Nematoda),CL:0000661,exact,Cao
+Other interneurons,interneuron,CL:0000099,exact,Cao
+GABAergic neurons,GABAergic neuron,CL:0000617,exact,Cao
+Am/PH sheath cells,sheath cell,CL:0000618,larger than actual,Cao
+Pharyngeal muscle,muscle cell,CL:0000187,larger than actual,Cao
+Pharyngeal neurons,neuron,CL:0000540,larger than actual,Cao
+Oxygen sensory neurons,sensory neuron,sensory neuron,larger than actual,Cao
+Somatic gonad precursors,,,multi-cell type,Cao
+flp-1(+) interneurons,interneuron,CL:0000099,larger than actual,Cao
+Canal associated neurons,neuron,CL:0000540,larger than actual,Cao
+Unclassified glia,glial cell,CL:0000125,exact,Cao
+Pharyngeal gland,,,organ,Cao
+Excretory cells,excretory cell,CL:0000424,exact,Cao
+Dopaminergic neurons,dopaminergic neuron,CL:0000700,exact,Cao
+Socket cells,socket cell (sensu Nematoda),CL:0000389,exact,Cao
+Rectum,,,organ,Cao

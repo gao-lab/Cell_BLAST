@@ -1,0 +1,13 @@
+cell_type1,cell_ontology_class,cell_ontology_id
+Basal,basal cell of epithelium of trachea,CL:1000348
+Goblet,tracheal goblet cell,CL:1000329
+Tuft,brush cell of trachea,CL:0002207
+Ciliated,ciliated columnar cell of tracheobronchial tree,CL:0002145
+Club,club cell,CL:0000158
+Neuroendocrine,lung neuroendocrine cell,CL:1000223
+Ionocyte,ionocyte,CL:0005006
+Brush,brush cell of trachea,CL:0002207
+PNEC,lung neuroendocrine cell,CL:1000223
+Secretory,club cell,CL:0000158
+Cycling Basal (homeostasis),basal cell of epithelium of trachea,CL:1000348
+Ionocytes,ionocyte,CL:0005006

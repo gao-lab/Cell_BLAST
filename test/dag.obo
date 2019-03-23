@@ -1,0 +1,56 @@
+format-version: 1.2
+ontology: CL
+
+[Term]
+id: CL:001
+name: root
+
+[Term]
+id: CL:002
+name: a
+synonym: "A" EXACT []
+is_a: CL:001 ! root
+
+[Term]
+id: CL:003
+name: b
+synonym: "B" EXACT []
+is_a: CL:002 ! a
+
+[Term]
+id: CL:004
+name: c
+synonym: "C" EXACT []
+is_a: CL:002 ! a
+is_a: CL:005 ! d
+
+[Term]
+id: CL:005
+name: d
+synonym: "D" EXACT []
+is_a: CL:001 ! root
+
+[Term]
+id: CL:006
+name: e
+synonym: "E" EXACT []
+is_a: CL:001 ! root
+
+[Term]
+id: CL:007
+name: f
+synonym: "F" EXACT []
+is_a: CL:006 ! e
+
+[Term]
+id: CL:008
+name: g
+synonym: "G" EXACT []
+is_a: CL:007 ! f
+
+[Term]
+id: CL:009
+name: h
+synonym: "H" EXACT []
+is_a: CL:007 ! f
+is_a: CL:005 ! d

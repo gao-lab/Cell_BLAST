@@ -1,0 +1,28 @@
+{
+    "name": "root",
+    "children": [
+        {
+            "name": "a",
+            "alias": "A",
+            "children": [
+                {"name": "b", "alias": ["B"]},
+                {"name": "c", "alias": ["C"]}
+            ]
+        },
+        {"name": "d", "alias": ["D"]},
+        {
+            "name": "e",
+            "alias": ["E"],
+            "children": [
+                {
+                    "name": "f",
+                    "alias": ["F"],
+                    "children": [
+                        {"name": "g", "alias": ["G"]},
+                        {"name": "h", "alias": ["H"]}
+                    ]
+                }
+            ]
+        }
+    ]
+}

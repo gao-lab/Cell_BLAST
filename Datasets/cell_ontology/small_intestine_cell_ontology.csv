@@ -1,0 +1,44 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+Enterocyte.Immature.Distal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x
+Tuft,,brush cell,CL:0002204,exact,Haber_10x
+Goblet,,small intestine goblet cell,CL:1000495,exact,Haber_10x
+Endocrine,,enteroendocrine cell,CL:0000164,exact,Haber_10x
+Stem,,stem cell,CL:0000034,exact,Haber_10x
+TA.Early,transit amplifying,,,,Haber_10x
+Enterocyte.Mature.Proximal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x
+TA.G1,transit amplifying,,,,Haber_10x
+TA.G2,transit amplifying,,,,Haber_10x
+Enterocyte.Progenitor.Early,,enterocyte of epithelium of small intestine,CL:1000334,similar,Haber_10x
+Enterocyte.Progenitor.Late,,enterocyte of epithelium of small intestine,CL:1000334,similar,Haber_10x
+Enterocyte.Immature.Proximal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x
+Paneth,,paneth cell,CL:0000510,exact,Haber_10x
+Enterocyte.Progenitor,,enterocyte of epithelium of small intestine,CL:1000334,similar,Haber_10x
+Enterocyte.Mature.Distal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x
+Enterocyte,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_Smart-seq2
+TA,transit amplifying,,,,Haber_Smart-seq2
+Stem.TA,,stem cell,CL:0000034,exact,Haber_10x_FAE
+Entero.proximal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_FAE
+Enteroendocrine,,enteroendocrine cell,CL:0000164,exact,Haber_10x_FAE
+K.cells,,enteroendocrine cell,CL:0000164,larger than actual,Haber_10x_FAE
+Entero.distal,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_FAE
+M.cell,,type M enteroendocrine cell,CL:0002502,exact,Haber_10x_FAE
+D.cells,,type D cell of small intestine,CL:0002266,exact,Haber_10x_FAE
+EC.Reg4,endocrine,enteroendocrine cell,CL:0000164,exact,Haber_10x_FAE
+Paneth.progenitor,,paneth cell,CL:0000510,similar,Haber_10x_largecell
+Paneth.2,,paneth cell,CL:0000510,exact,Haber_10x_largecell
+Paneth.1,,paneth cell,CL:0000510,exact,Haber_10x_largecell
+Enterocyte.dist,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_largecell
+Enterocyte.prox,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_largecell
+Enterocyte.1,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_organoid
+Enterocyte.2,,enterocyte of epithelium of small intestine,CL:1000334,exact,Haber_10x_organoid
+Mcell.Immature,,type M enteroendocrine cell,CL:0002502,exact,Haber_10x_organoid
+M.cell.Progenitor.1,,type M enteroendocrine cell,CL:0002502,similar,Haber_10x_organoid
+EP,enterocyte progenitor,enterocyte of epithelium of small intestine,CL:1000334,similar,Haber_10x_region
+tuft progenitor cell,,brush cell,CL:0002204,similar,Gao_Small_intestine
+PROCR+ progenitor cell,,,,,Gao_Small_intestine
+enterocyte progenitor,,enterocyte of epithelium of small intestine,CL:1000334,similar,Gao_Small_intestine
+enterocyte,,enterocyte of epithelium of small intestine,CL:1000334,exact,Gao_Small_intestine
+goblet cell,,small intestine goblet cell,CL:1000495,exact,Gao_Small_intestine
+secretory progenitor cell,,,,,Gao_Small_intestine
+LGR5+ stem cell,,stem cell,CL:0000034,exact,Gao_Small_intestine
+enteroendocrine cell,,enteroendocrine cell,CL:0000164,exact,Gao_Small_intestine

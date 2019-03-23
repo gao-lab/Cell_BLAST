@@ -1,0 +1,72 @@
+﻿cell_type1,full_name,cell_ontology_class,cell_ontology_id,annotation
+LH(AL#1),ascending limb of the loop of Henle,kidney loop of Henle ascending limb epithelial cell,CL:1001016,exact
+DCT,distal convoluted tubule,kidney distal convoluted tubule epithelial cell,CL:1000849,exact
+PC,principal cell,renal principal cell,CL:0005009,exact
+IC-A,Alpha Intercalated Cell,renal alpha-intercalated cell,CL:0005011,exact
+PT(S2),proximal tubule,epithelial cell of proximal tubule,CL:0002306,exact
+LH(AL#2),ascending limb of the loop of Henle,kidney loop of Henle ascending limb epithelial cell,CL:1001016,exact
+Podocyte,Podocyte,glomerular visceral epithelial cell,CL:0000653,exact
+PT(S1),proximal tubule,epithelial cell of proximal tubule,CL:0002306,exact
+LH(DL),descending limb of the loop of Henle,kidney loop of Henle descending limb epithelial cell,CL:1001021,exact
+CNT,connecting tubule,kidney connecting tubule epithelial cell,CL:1000768,exact
+EC,endothelial cell,endothelial cell,CL:0000115,exact
+IC-B,Beta Intercalated Cell,renal beta-intercalated cell,CL:0002201,exact
+PT(S3),proximal tubule,epithelial cell of proximal tubule,CL:0002306,exact
+Mesangium,Mesangium,mesangial cell,CL:0000650,exact
+Macrophage,Macrophage,kidney resident macrophage,CL:1000698,exact
+CD,collecting duct epithelium,kidney collecting duct epithelial cell,CL:1000454,exact
+CM,cap mesenchyme,mesenchymal stem cell,CL:0000134,exact
+DT,distal convoluted tubule,,,
+ED,endothelial cell,endothelial cell,CL:0000115,exact
+EM,extraglomerular mesangium,extraglomerular mesangial cell,CL:0002173,exact
+ER,erythrocyte,erythrocyte,CL:0000232,exact
+IMM,immune cell,leukocyte,CL:0000738,exact
+LH,loop of Henle,kidney loop of Henle epithelial cell,CL:1000909,exact
+MG,mesangium,mesangial cell,CL:0000650,exact
+PD,podocyte,glomerular visceral epithelial cell,CL:0000653,exact
+PT,proximal tubule,epithelial cell of proximal tubule,CL:0002306,exact
+RI,renal interstitium,stromal cell,CL:0000499,exact
+Podocytes,,glomerular visceral epithelial cell,CL:0000653,exact
+Endothelium,,endothelial cell,CL:0000115,exact
+Immune,,leukocyte,CL:0000738,exact
+Tubules,,kidney tubule cell,CL:1000507,exact
+Distal tubule,,kidney distal convoluted tubule epithelial cell,CL:1000849,exact
+Stromal,,stromal cell,CL:0000499,exact
+Ureteric bud,,ureteral cell,CL:1000601,part of
+Medullary Collecting Duct,,kidney medulla collecting duct epithelial cell,CL:1000546,exact
+Collecting Duct,,kidney collecting duct epithelial cell,CL:1000454,exact
+Uteric Tip,,ureteral cell,CL:1000601,part of
+Loop of Henle,,kidney loop of Henle epithelial cell,CL:1000909,exact
+Distal Comma Shaped Body,,,,"definition: As the renal vesicle grows, differentiates and undergoes further morphological changes, its proximal portion elongates, forming a comma-shaped cleft. The comma-shaped body is a transitional nephron stage and is comprised of a connecting segment and distal and proximal segments."
+Mid S-Shaped Body,,,,maybe a transition state
+Proximal Tubule,,epithelial cell of proximal tubule,CL:0002306,exact
+Pretubular Aggregate,,mesenchymal cell,CL:0008019,Pretubular aggregates are mesenchymal cells that aggregate near the tips of newly formed ureteric bud branches undergo mesenchyme-to-epithelial conversion.
+Cap Mesenchyme,,mesenchymal stem cell,CL:0000134,exact
+Nephrogenic Zone Stroma,,nephrogenic mesenchyme stem cell,CL:0000383,"not sure, or CL: stromal cell"
+Cortical Stroma,,stromal cell,CL:0000499,"part of, maybe add a new node"
+Medullary Stroma,,stromal cell,CL:0000499,"part of, maybe add a new node"
+Loop_of_Henle,,kidney loop of Henle epithelial cell,CL:1000909,exact
+Glomerular_epithelium,,glomerular visceral epithelial cell,CL:0000653,exact
+Proximal_tubuluar_cells,,epithelial cell of proximal tubule,CL:0002306,exact
+Collecting_duct,,kidney collecting duct epithelial cell,CL:1000454,exact
+Mesangial_cells,,mesangial cell,CL:0000650,exact
+Ascending_vasa_recta,,vasa recta ascending limb cell,CL:1001131,exact
+Descending_vasa_recta,,vasa recta descending limb cell,CL:1001285,exact
+Glomerular_endothelium,,glomerular endothelial cell,CL:0002188,exact
+Urothelium,,ureter urothelial cell,CL:1000706,exact
+Pelvis,,kidney pelvis urothelial cell,CL:1000703,exact
+Fibroblasts,,fibroblast,CL:0000057,exact
+Endo,endothelial cell,endothelial cell,CL:0000115,exact
+Podo,Podocyte,glomerular visceral epithelial cell,CL:0000653,exact
+LOH,loop of Henle,kidney loop of Henle epithelial cell,CL:1000909,exact
+CD-PC,principal cell,renal principal cell,CL:0005009,exact
+CD-IC,intercalated cell,renal intercalated cell,CL:0005010,exact
+CD-Trans,,,,transition state
+Novel1,,,,
+Novel2,,,,
+Fib,fibroblast,fibroblast,CL:0000057,exact
+Macro,Macrophage,kidney resident macrophage,CL:1000698,exact
+Neutro,neutrophil,neutrophil,CL:0000775,exact
+B lymph,B lymphocyte,B cell,CL:0000236,exact
+T lymph,T lymphocyte,T cell,CL:0000084,exact
+NK,NK cell,natural killer cell,CL:0000623,exact

@@ -1,0 +1,4 @@
+cell_type1,cell_ontology_class,cell_ontology_id,remark
+HSPC,bone marrow hematopoietic cell,CL:1001610,larger than actual
+GMP,granulocyte monocyte progenitor cell,CL:0000557,exact
+BMCP,basophil mast progenitor cell,CL:0002028,exact

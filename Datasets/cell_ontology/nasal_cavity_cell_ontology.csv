@@ -1,0 +1,18 @@
+﻿cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study
+Endothelial,,endothelial cell,CL:0000115,exact,Ordovas-Montanes
+Apical,apical goblet cell,nasal mucosa goblet cell,CL:0002480,exact,Ordovas-Montanes
+Ciliated,,ciliated epithelial cell,CL:0000067,exact,Ordovas-Montanes
+PlasmaCell,,plasma cell,CL:0000786,exact,Ordovas-Montanes
+Basal,,respiratory basal cell,CL:0002633,exact,Ordovas-Montanes
+Glandular,,glandular epithelial cell,CL:0000150,exact,Ordovas-Montanes
+Myeloid,,myeloid cell,CL:0000763,exact,Ordovas-Montanes
+Fibroblast,,fibroblast,CL:0000057,exact,Ordovas-Montanes
+MastCell,,mucosal type mast cell,CL:0000485,exact,Ordovas-Montanes
+TCell,,T cell,CL:0000084,exact,Ordovas-Montanes
+,,,,,
+,,,,,
+,,,,,
+,,,,,
+,,,,,
+,,,,,
+,,,,,

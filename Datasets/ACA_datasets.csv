@@ -1,0 +1,88 @@
+dataset_name,organism,organ,lifestage,platform,cell number,publication,CL,remark,collect
+Quake_Smart-seq2_Aorta,Mus musculus,Aorta,,Smart-seq2,408,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Alles,Drosophila melanogaster,Atlas,embryo,Drop-seq,4759,Cell fixation and preservation for droplet-based single-cell transcriptomics,TRUE,,collect_alles.R
+Cao,Caenorhabditis elegans,Atlas,L2,sci-RNA-seq,32061,Comprehensive single-cell transcriptional profiling of a multicellular organism,TRUE,monocle package,collect_cao.R
+Farrell,Danio rerio,Atlas,embryo,Drop-seq,26434,Single-cell reconstruction of developmental trajectories during zebrafish embryogenesis,FALSE,pseudotime analysis,collect_farrell.R
+Fincher,Schmidtea mediterranea,Atlas,,Drop-seq,50562,Cell type transcriptome atlas for the planarian Schmidtea mediterranea,TRUE,,collect_fincher.R
+Quake_10x_Bladder,Mus musculus,Bladder,,10x,2500,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Bladder,Mus musculus,Bladder,,Smart-seq2,1378,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Dahlin_10x,Mus musculus,Bone Marrow,NA,10x,46447,A single-cell hematopoietic landscape resolves 8 lineage trajectories and defects in Kit mutant mice,TRUE,,collect_dahlin.R
+Dahlin_mutant,Mus musculus,Bone Marrow,NA,10x,14675,A single-cell hematopoietic landscape resolves 8 lineage trajectories and defects in Kit mutant mice,TRUE,c-Kit mutant,collect_dahlin.R
+Quake_10x_Bone_Marrow,Mus musculus,Bone Marrow,,10x,3652,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Bone_Marrow,Mus musculus,Bone Marrow,,Smart-seq2,5037,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Tusi,Mus musculus,Bone Marrow,adult,inDrop,4763,Population snapshots predict early haematopoietic and erythroid hierarchies,FALSE,Continuous,collect_tusi.R
+Velten_QUARTZ-seq,Homo sapiens,Bone Marrow,29-year-old,QUARTZ-seq,379,Human haematopoietic stem cell lineage commitment is a continuous process,FALSE,"no meta, continuous",collect_velten.R
+Velten_Smart-seq2,Homo sapiens,Bone Marrow,25-year-old,Smart-seq2,1035,Human haematopoietic stem cell lineage commitment is a continuous process,FALSE,"no meta, continuous",collect_velten.R
+Campbell,Mus musculus,Brain,,Drop-seq,20921,A molecular census of arcuate hypothalamus and median eminence cell types,TRUE,Adult Arc-ME complex,collect_campbell.R
+Chen,Mus musculus,Brain,,Drop-seq,12089,Single-Cell RNA-Seq Reveals Hypothalamic Cell Diversity,TRUE,Adult hypothalamus,collect_chen.R
+Lake_2018,Homo sapiens,Brain,,snDrop-seq,35289,Integrative single-cell analysis of transcriptional and epigenetic states in the human adult brain,TRUE,,collect_lake_2018.R
+Tosches_lizard,Pogona vitticeps,Brain,,Drop-seq,4187,"Evolution of pallium, hippocampus, and cortical cell types revealed by single-cell transcriptomics in reptiles",TRUE,,collect_tosches_lizard.R
+Tosches_turtle,Trachemys scripta elegans,Brain,,Drop-seq,18664,"Evolution of pallium, hippocampus, and cortical cell types revealed by single-cell transcriptomics in reptiles",TRUE,,collect_tosches_turtle.R
+Quake_Smart-seq2_Brain_Myeloid,Mus musculus,Brain Myeloid,,Smart-seq2,4455,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_Smart-seq2_Brain_Non-Myeloid,Mus musculus,Brain Non-Myeloid,,Smart-seq2,3401,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_Smart-seq2_Diaphragm,Mus musculus,Diaphragm,,Smart-seq2,870,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_Smart-seq2_Fat,Mus musculus,Fat,,Smart-seq2,4967,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Alemany_Fin,Danio rerio,Fin,adult,ScarTrace,4022,Whole-organism clone tracing using single-cell sequencing,TRUE,,collect_alemany.R
+Quake_Smart-seq2_Heart,Mus musculus,Heart,,Smart-seq2,4365,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_10x_Heart_and_Aorta,Mus musculus,Heart and Aorta,,10x,624,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Adam,Mus musculus,Kidney,post natal day 1,Drop-seq,3660,Psychrophilic proteases dramatically reduce single-cell RNA-seq artifacts: a molecular atlas of kidney development,TRUE,cold active protease,collect_adam.R
+Alemany_Kidney,Danio rerio,Kidney,adult,ScarTrace,4415,Whole-organism clone tracing using single-cell sequencing,TRUE,,collect_alemany.R
+Karaiskos_mouse,Mus musculus,Kidney,8-week-old,Drop-seq,12954,A Single-Cell Transcriptome Atlas of the Mouse Glomerulus,TRUE,cells expressing >250 genes and 350 transcripts (defined as unique molecular identifiers) were obtained from four independent biologic replicates (eight mice pooled per replicate).,collect_karaiskos_mouse.R
+Park,Mus musculus,Kidney,adult,10x,43745,Single-cell transcriptomics of the mouse kidney reveals potential cellular targets of kidney disease,TRUE,4 WT + 3 transgene,collect_park.R
+Quake_10x_Kidney,Mus musculus,Kidney,,10x,2781,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Kidney,Mus musculus,Kidney,,Smart-seq2,519,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Wu_human,Homo sapiens,Kidney,adult,10x_snRNA-seq,4298,Comparative Analysis and Refinement of Human PSC-Derived Kidney Organoid Differentiation with Single-Cell Transcriptomics,TRUE,,collect_wu_human.R
+Wang_Kidney,Homo sapiens,Kidney,fetal,modified STRT-seq,2714,Dissecting the Global Dynamic Molecular Profiles of Human Fetal Kidney Development by Single-Cell RNA Sequencing,TRUE,Human Fetal Kidney Development ,collect_wang_kidney.R
+Young,Homo sapiens,Kidney,"fetal, pediatric, adolescent, adult",10x,5685,Single-cell transcriptomes from human kidneys reveal the cellular identity of renal tumors,TRUE,"Only healthy, mature cells are included",collect_young.R
+Quake_Smart-seq2_Large_Intestine,Mus musculus,Large Intestine,,Smart-seq2,3938,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_10x_Limb_Muscle,Mus musculus,Limb Muscle,,10x,4536,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Limb_Muscle,Mus musculus,Limb Muscle,,Smart-seq2,1090,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_10x_Liver,Mus musculus,Liver,,10x,1845,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Liver,Mus musculus,Liver,,Smart-seq2,714,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Yang,Mus musculus,Liver,,Smart-seq2,529,A single-cell transcriptomic analysis reveals precise pathways and regulatory mechanisms underlying hepatoblast differentiation,TRUE,"cell type ""hepatocyte"" used to be ""hepatoblast/hepatocyte"" ",collect_yang.R
+Lee,Mus musculus,Lung,7-10 week,Smart-seq2,182,Anatomically and Functionally Distinct Lung Mesenchymal Populations Marked by Lgr5 and Lgr6,TRUE,only mesenchymal cell,collect_lee.R
+Quake_10x_Lung,Mus musculus,Lung,,10x,5449,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Lung,Mus musculus,Lung,,Smart-seq2,1716,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Wang_Lung,Mus musculus,Lung,"postnatal day 3 (P3), P15, and P60",10x,9519,Pulmonary alveolar type I cell population consists of two distinct subtypes that differ in cell fate,TRUE,,collect_wang_lung.R
+Bach,Mus musculus,Mammary Gland,"nulliparous, mid gestation, lactation and post weaning",10x,23184,Differentiation dynamics of mammary epithelial cells revealed by single-cell RNA sequencing,TRUE,"NP, G, L, PI represent nulliparous, mid gestation, lactation and post weaning",collect_bach.R
+Giraddi_10x,Mus musculus,Mammary Gland,"E16, E18, postnatal, adult",10x,5172,Single-Cell Transcriptomes Distinguish Stem Cell State Changes and Lineage Specification Programs in Early Mammary Gland Development,TRUE,pseudotime analysis,collect_giraddi.R
+Nguyen_10x,Homo sapiens,Mammary Gland,17-37 yeas old,10x,24239,Profiling human breast epithelial cells using single cell RNA sequencing identifies cell diversity,TRUE,,collect_nguyen_10x.R
+Nguyen_C1,Homo sapiens,Mammary Gland,17-37 yeas old,C1,867,Profiling human breast epithelial cells using single cell RNA sequencing identifies cell diversity,TRUE,,collect_nguyen_c1.R
+Quake_10x_Mammary_Gland,Mus musculus,Mammary Gland,,10x,4481,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Mammary_Gland,Mus musculus,Mammary Gland,,Smart-seq2,2405,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Sun,Mus musculus,Mammary Gland,"virgin, pregnant",C1,239,Single-cell RNA-Seq reveals cell heterogeneity and hierarchy within mouse mammary epithelia,TRUE,,collect_sun.R
+Zeisel_2018,Mus musculus,Nervous System,adolescent,10x,160796,Molecular Architecture of the Mouse Nervous System,TRUE,"brain and spinal cord into contiguous anatomical regions and further included the peripheral sensory, enteric, and sympathetic nervous system",collect_zeisel_2018.R
+Baron_human,Homo sapiens,Pancreas,,inDrop,8569,A Single-Cell Transcriptomic Map of the Human and Mouse Pancreas Reveals Inter- and Intra-cell Population Structure,TRUE,4 cadaveric donors,collect_baron_human.R
+Baron_mouse,Mus musculus,Pancreas,,inDrop,1886,A Single-Cell Transcriptomic Map of the Human and Mouse Pancreas Reveals Inter- and Intra-cell Population Structure,TRUE,,collect_baron_mouse.R
+Enge,Homo sapiens,Pancreas,,Smart-seq2,2282,Single-Cell Analysis of Human Pancreas Reveals Transcriptional Signatures of Aging and Somatic Mutation Patterns,TRUE,eight cadaveric donors,collect_enge.R
+Lawlor,Homo sapiens,Pancreas,,SMARTer,370,Single-cell transcriptomes identify human islet cell signatures and reveal cell-type-specific expression changes in type 2 diabetes,TRUE,,collect_lawlor.R
+Muraro,Homo sapiens,Pancreas,,CEL-Seq2,2122,A Single-Cell Transcriptome Atlas of the Human Pancreas,TRUE,4 cadaveric donors,collect_muraro.R
+Qiu,Mus musculus,Pancreas,,Smart-seq2,887,Deciphering Pancreatic Islet Î² Cell and Î± Cell Maturation Pathways and Characteristic Features at the Single-Cell Level,TRUE,,collect_qiu.R
+Quake_Smart-seq2_Pancreas,Mus musculus,Pancreas,,Smart-seq2,1564,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Segerstolpe,Homo sapiens,Pancreas,,Smart-seq2,1070,Single-Cell Transcriptome Profiling of Human Pancreatic Islets in Health and Type 2 Diabetes,TRUE,Healthy,collect_segerstolpe.R
+Singh,Danio rerio,Pancreas,"1,3,4,6,10,12,14 month post-fertilization",Smart-seq2,637,Machine learning based classification of cells into chronological stages using single-cell transcriptomics,TRUE,only beta cell,collect_singh.R
+Xin_2016,Homo sapiens,Pancreas,,SMARTer,609,RNA Sequencing of Single Human Islet Cells Reveals Type 2 Diabetes Genes,TRUE,Healthy,collect_xin_2016.R
+Zheng,Homo sapiens,PBMC,adult,10x,91789,Massively parallel digital transcriptional profiling of single cells,TRUE,Bead enriched subpopulations,collect_zheng.R
+Vento-Tormo_10x,Homo sapiens,Placenta,6-12 weeks gestation,10x,64734,Single-cell reconstruction of the early maternal-fetal interface in humans,TRUE,,collect_vento-tormo.R
+Vento-Tormo_Smart-seq2,Homo sapiens,Placenta,6-12 weeks gestation,Smart-seq2,5418,Single-cell reconstruction of the early maternal-fetal interface in humans,TRUE,,collect_vento-tormo.R
+Macosko,Mus musculus,Retina,,Drop-seq,44808,Highly Parallel Genome-wide Expression Profiling of Individual Cells Using Nanoliter Droplets,TRUE,,collect_macosko.R
+Shekhar,Mus musculus,Retina,,Drop-seq,26830,Comprehensive Classification of Retinal Bipolar Neurons by Single-Cell Transcriptomics,TRUE,Focus on bipolar neurons,collect_shekhar.R
+Philippeos,Homo sapiens,Skin,adult,Smart-seq2,184,Spatial and Single-Cell Transcriptional Profiling Identifies Functionally Distinct Human Dermal Fibroblast Subpopulations,TRUE,only fibroblast,collect_philippeos.R
+Quake_Smart-seq2_Skin,Mus musculus,Skin,,Smart-seq2,2310,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Haber_10x,Mus musculus,Small Intestine,7-10 week,10x,7216,A single-cell survey of the small intestinal epithelium,TRUE,,collect_haber_10x.R
+Haber_10x_FAE,Mus musculus,Small Intestine,7-10 week,10x,3260,A single-cell survey of the small intestinal epithelium,TRUE,,collect_haber_10x.R
+Haber_10x_largecell,Mus musculus,Small Intestine,7-10 week,10x,10396,A single-cell survey of the small intestinal epithelium,TRUE,,collect_haber_10x.R
+Haber_10x_region,Mus musculus,Small Intestine,7-10 week,10x,11665,A single-cell survey of the small intestinal epithelium,TRUE,,collect_haber_10x.R
+Haber_Smart-seq2,Mus musculus,Small Intestine,7-10 week,Smart-seq2,1522,A single-cell survey of the small intestinal epithelium,TRUE,,collect_haber_smartseq2.R
+Quake_10x_Spleen,Mus musculus,Spleen,,10x,9552,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Spleen,Mus musculus,Spleen,,Smart-seq2,1697,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Guo,Homo sapiens,Testis,,10x,6490,The adult human testis transcriptional cell atlas,TRUE,,collect_guo.R
+Quake_10x_Thymus,Mus musculus,Thymus,,10x,1429,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Thymus,Mus musculus,Thymus,,Smart-seq2,1349,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Quake_10x_Tongue,Mus musculus,Tongue,,10x,7538,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Tongue,Mus musculus,Tongue,,Smart-seq2,1416,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
+Montoro_10x,Mus musculus,Trachea,adult,10x,7193,A revised airway epithelial hierarchy includes CFTR-expressing ionocytes,TRUE,4 WT + 2 Foxj1-EGFP,collect_montoro_10x.R
+Montoro_Smart-seq2,Mus musculus,Trachea,adult,modified Smart-seq2,301,A revised airway epithelial hierarchy includes CFTR-expressing ionocytes,TRUE,3 WT,collect_montoro_smartseq2.R
+Plasschaert,Mus musculus,Trachea,adult,inDrop,6977,A single-cell atlas of the airway epithelium reveals the CFTR-rich pulmonary ionocyte,TRUE,4 WT,collect_plasschaert.R
+Quake_10x_Trachea,Mus musculus,Trachea,,10x,11269,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
+Quake_Smart-seq2_Trachea,Mus musculus,Trachea,,Smart-seq2,1350,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R

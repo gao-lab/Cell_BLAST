@@ -1,0 +1,6 @@
+download
+data
+ortholog/*
+!ortholog/scripts/
+GeACT
+marker
