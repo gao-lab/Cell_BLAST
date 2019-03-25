@@ -7,18 +7,14 @@ Welcome to Cell BLAST's documentation!
 ======================================
 
 **Cell_BLAST** is a single cell transcriptome querying tool, based on
-a deep learning model, **DIRECTi**, which supports:
+a deep generative model (currently named **DIRECTi**).
 
-* Learning low dimensional cell embedding with intrinsic data clustering
-* Semi-supervision
-* Removal of batch effect / systematical bias
+**Cell_BLAST** performs querying based on parametric cell embeddings from
+**DIRECTi**, using posterior distribution distances. Information like cell type
+annotation can then be transferred from reference to query data based on
+Cell BLAST hits.
 
-**Cell_BLAST** then performs query based on parametric cell embeddings from
-**DIRECTi**, using posterior distribution distances.
-
-Information like cell type annotation can then be transferred from reference
-to query data based on Cell BLAST hits.
-
+.. image:: _static/flowchart.png
 
 Contents
 ========
