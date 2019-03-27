@@ -431,7 +431,7 @@ class DIRECTi(model.Model):
                 priority = "memory" if x.shape[0] > 1e5 else "speed"
             if priority == "speed":
                 xrep = [x] * noisy
-                if scipy.sparse.issparse(x[0]):
+                if scipy.sparse.issparse(x):
                     xrep = scipy.sparse.vstack(xrep)
                 else:
                     xrep = np.vstack(xrep)
@@ -440,8 +440,9 @@ class DIRECTi(model.Model):
                 return np.stack(np.split(lrep, noisy), axis=1)
             else:  # priority == "memory":
                 return np.stack([self._fetch(
-                    self.latent, x, batch_size, True, progress_bar, random_seed
-                ) for _ in range(noisy)], axis=1)
+                    self.latent, x, batch_size, True, progress_bar,
+                    (random_seed + i) if random_seed is not None else None
+                ) for i in range(noisy)], axis=1)
         return self._fetch(self.latent, x, batch_size, False, progress_bar)
 
     def clustering(self, x, batch_size=4096, progress_bar=True):
