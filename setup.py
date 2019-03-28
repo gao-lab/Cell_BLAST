@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Cell_BLAST",
-    version="0.1.0",
+    version="0.1.1",
     author="Zhijie Cao",
     author_email="caozj@mail.cbi.pku.edu.cn",
     description="Single-cell transcriptome querying tool",

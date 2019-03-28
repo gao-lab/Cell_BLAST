@@ -10,7 +10,6 @@ suppressPackageStartupMessages({
 })
 source("../../Utilities/data.R", chdir = TRUE)
 
-
 cat("Reading data...\n")
 pure <- readRDS("../download/PBMC/rds/all_pure_pbmc_data.rds")
 pure_idx <- readRDS("../download/PBMC/rds/pure_idx.rds")
