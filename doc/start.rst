@@ -13,8 +13,8 @@ Vignettes
 We provide the following two ipython notebooks to help you start using
 ``Cell_BLAST`` and ``DIRECTi``.
 
-* `DIRECTi <http://cblast.gao-lab.org/DIRECTi.html>`_
-* `Cell BLAST <http://cblast.gao-lab.org/BLAST.html>`_
+* `DIRECTi <_static/DIRECTi.html>`_
+* `Cell BLAST <_static/BLAST.html>`_
 
 
 Selected Documentations

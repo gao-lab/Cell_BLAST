@@ -294,6 +294,16 @@ class ExprDataSet(object):
             uns=copy.deepcopy(dict(self.uns))
         )
 
+    def clean_duplicate_vars(self):
+        unique_vars, duplicate_mask = \
+            set(), np.ones(self.var_names.size).astype(np.bool_)
+        for idx, item in enumerate(self.var_names):
+            if item in unique_vars:
+                duplicate_mask[idx] = False
+            else:
+                unique_vars.add(item)
+        return self[:, duplicate_mask]
+
     def get_meta_or_var(self, names, normalize_var=False, log_var=False):
         """
         Get either meta information (column names in ``obs``) or
@@ -796,7 +806,7 @@ class ExprDataSet(object):
 
     def violin(
         self, group, var, normalize_var=True, width=7, height=7,
-        ax=None, **kwargs
+        ax=None, strip_kws=None, violin_kws=None
     ):
         """
         Violin plot across obs groups.
@@ -816,7 +826,10 @@ class ExprDataSet(object):
         ax : matplotlib.axes.Axes
             Specify an existing axes to plot onto, by default None.
             If specified, ``width`` and ``height`` take no effect.
-        **kwargs
+        strip_kws : dict
+            Additional keyword arguments will be passed to
+            ``seaborn.stripplot``.
+        violin_kws : dict
             Additional keyword arguments will be passed to
             ``seaborn.violinplot``.
 
@@ -828,15 +841,22 @@ class ExprDataSet(object):
         import matplotlib.pyplot as plt
         import seaborn as sns
 
+        strip_kws = {} if strip_kws is None else strip_kws
+        violin_kws = {} if violin_kws is None else violin_kws
+
         df = self.get_meta_or_var(
             [group, var],
             normalize_var=normalize_var, log_var=True
         )
         if ax is None:
             _, ax = plt.subplots(figsize=(width, height))
+        ax = sns.stripplot(
+            x=group, y=var, data=df,
+            color=".3", edgecolor=None, size=3, ax=ax, **strip_kws
+        )
         ax = sns.violinplot(
             x=group, y=var, data=df,
-            scale="width", ax=ax, inner="point", **kwargs
+            scale="width", ax=ax, inner=None, **violin_kws
         )
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)

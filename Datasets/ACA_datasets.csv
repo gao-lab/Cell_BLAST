@@ -10,9 +10,9 @@ Dahlin_10x,Mus musculus,Bone Marrow,NA,10x,46447,A single-cell hematopoietic lan
 Dahlin_mutant,Mus musculus,Bone Marrow,NA,10x,14675,A single-cell hematopoietic landscape resolves 8 lineage trajectories and defects in Kit mutant mice,TRUE,c-Kit mutant,collect_dahlin.R
 Quake_10x_Bone_Marrow,Mus musculus,Bone Marrow,,10x,3652,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_10x.R
 Quake_Smart-seq2_Bone_Marrow,Mus musculus,Bone Marrow,,Smart-seq2,5037,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,TRUE,,collect_quake_smartseq2.R
-Tusi,Mus musculus,Bone Marrow,adult,inDrop,4763,Population snapshots predict early haematopoietic and erythroid hierarchies,FALSE,Continuous,collect_tusi.R
-Velten_QUARTZ-seq,Homo sapiens,Bone Marrow,29-year-old,QUARTZ-seq,379,Human haematopoietic stem cell lineage commitment is a continuous process,FALSE,"no meta, continuous",collect_velten.R
-Velten_Smart-seq2,Homo sapiens,Bone Marrow,25-year-old,Smart-seq2,1035,Human haematopoietic stem cell lineage commitment is a continuous process,FALSE,"no meta, continuous",collect_velten.R
+Tusi,Mus musculus,Bone Marrow,adult,inDrop,4763,Population snapshots predict early haematopoietic and erythroid hierarchies,TRUE,Continuous,collect_tusi.R
+Velten_QUARTZ-seq,Homo sapiens,Bone Marrow,29-year-old,QUARTZ-seq,379,Human haematopoietic stem cell lineage commitment is a continuous process,TRUE,"no meta, continuous",collect_velten.R
+Velten_Smart-seq2,Homo sapiens,Bone Marrow,25-year-old,Smart-seq2,1035,Human haematopoietic stem cell lineage commitment is a continuous process,TRUE,"no meta, continuous",collect_velten.R
 Campbell,Mus musculus,Brain,,Drop-seq,20921,A molecular census of arcuate hypothalamus and median eminence cell types,TRUE,Adult Arc-ME complex,collect_campbell.R
 Chen,Mus musculus,Brain,,Drop-seq,12089,Single-Cell RNA-Seq Reveals Hypothalamic Cell Diversity,TRUE,Adult hypothalamus,collect_chen.R
 Lake_2018,Homo sapiens,Brain,,snDrop-seq,35289,Integrative single-cell analysis of transcriptional and epigenetic states in the human adult brain,TRUE,,collect_lake_2018.R

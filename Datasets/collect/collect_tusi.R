@@ -27,10 +27,15 @@ colnames(potential) <- "potential"
 meta_df <- Reduce(cbind, list(meta_df, fate, potential))
 rownames(meta_df) <- meta_df$cell_id
 meta_df$cell_id <- NULL
+meta_df$cell_type1 = "HSPC"
 
 expr_mat <- expr_mat[rownames(meta_df), ]
 
+#assign cell ontology
+cell_ontology <- read.csv("../cell_ontology/bone_marrow_cell_ontology.csv")
+cell_ontology <- cell_ontology[, c("cell_type1", "cell_ontology_class", "cell_ontology_id")]
+
 #datasets_meta
 datasets_meta <- read.csv("../ACA_datasets.csv", header = TRUE, row.names = 1)
-construct_dataset("../data/Tusi", t(expr_mat), meta_df, datasets_meta, grouping = "batch")
+construct_dataset("../data/Tusi", t(expr_mat), meta_df, datasets_meta, cell_ontology, grouping = "batch")
 message("Done!")
