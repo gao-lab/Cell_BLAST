@@ -5,7 +5,7 @@ Cell BLAST is a cell querying tool for single-cell transcriptomics data.
 For each query cell, it searches for most similar cells in the reference database.
 Annotations in reference cells, e.g. cell type, can then be transfered to query
 cells based on cell-to-cell similarities. See our
-[preprint](https://www.biorxiv.org/content/10.1101/587360v1) for details.
+[preprint](https://www.biorxiv.org/content/10.1101/587360v2) for details.
 
 ![flowchart](doc/_static/flowchart.png)
 

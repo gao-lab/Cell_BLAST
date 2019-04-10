@@ -295,6 +295,15 @@ class ExprDataSet(object):
         )
 
     def clean_duplicate_vars(self):
+        """
+        Clean variables to preserve only the first occurrence of
+        duplicated variables
+
+        Returns
+        -------
+        cleaned : ExprDataSet
+            An ExprDataSet object with duplicated variables removed.
+        """
         unique_vars, duplicate_mask = \
             set(), np.ones(self.var_names.size).astype(np.bool_)
         for idx, item in enumerate(self.var_names):
