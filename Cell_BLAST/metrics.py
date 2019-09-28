@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics
 import sklearn.neighbors
+from . import blast
 from . import utils
 
 _identity = lambda x, y: 1 if x == y else 0
@@ -32,6 +33,24 @@ def confusion_matrix(x, y):
     return pd.DataFrame(data=cm, index=x_c, columns=y_c)
 
 
+def class_specific_accuracy(true, pred, expectation):
+    df = pd.DataFrame(index=np.unique(true), columns=["number", "accuracy"])
+    expectation = expectation.astype(np.bool)
+    for c in df.index:
+        true_mask = true == c
+        pred_mask = np.in1d(pred, expectation.columns[expectation.loc[c]])
+        df.loc[c, "number"] = true_mask.sum()
+        df.loc[c, "accuracy"] = np.logical_and(pred_mask, true_mask).sum() / df.loc[c, "number"]
+    return df
+
+
+def mean_balanced_accuracy(true, pred, expectation, population_weighed=False):
+    df = class_specific_accuracy(true, pred, expectation)
+    if population_weighed:
+        return (df["accuracy"] * df["number"]).sum() / df["number"].sum()
+    return df["accuracy"].mean()
+
+
 #===============================================================================
 #
 #  Distance based metrics
@@ -47,13 +66,26 @@ def nearest_neighbor_accuracy(
 
 
 def mean_average_precision_from_latent(
-        x, y, k=None, metric="minkowski", similarity=_identity, n_jobs=1):
-    _k = k if k is not None \
-        else np.round(y.shape[0] * 0.01).astype(np.int)
+    x, y, p=None, k=0.01, metric="minkowski", posterior_metric="npd_v1",
+    similarity=_identity, n_jobs=1
+):
+    if k < 1:
+        k = y.shape[0] * k
+    k = np.round(k).astype(np.int)
     nearestNeighbors = sklearn.neighbors.NearestNeighbors(
-        n_neighbors=min(y.shape[0], _k + 1), metric=metric, n_jobs=n_jobs)
+        n_neighbors=min(y.shape[0], k + 1), metric=metric, n_jobs=n_jobs)
     nearestNeighbors.fit(x)
     nni = nearestNeighbors.kneighbors(x, return_distance=False)
+    if p is not None:
+        posterior_metric = getattr(blast, posterior_metric)
+        pnnd = np.empty_like(nni, np.float32)
+        for i in range(pnnd.shape[0]):
+            for j in range(pnnd.shape[1]):
+                pnnd[i, j] = posterior_metric(
+                    x[i], x[nni[i, j]],
+                    p[i], p[nni[i, j]]
+                )
+            nni[i] = nni[i][np.argsort(pnnd[i])]
     return mean_average_precision(y, y[nni[:, 1:]], similarity=similarity)
 
 
@@ -62,7 +94,7 @@ def average_silhouette_score(x, y):
 
 
 def seurat_alignment_score(
-        x, y, k=None, n=1, metric="minkowski", random_seed=None, n_jobs=1):
+        x, y, k=0.01, n=1, metric="minkowski", random_seed=None, n_jobs=1):
     random_state = np.random.RandomState(random_seed)
     idx_list = [np.where(y == _y)[0] for _y in np.unique(y)]
     subsample_size = min(idx.size for idx in idx_list)
@@ -74,8 +106,8 @@ def seurat_alignment_score(
         ]
         subsample_y = y[np.concatenate(subsample_idx_list)]
         subsample_x = x[np.concatenate(subsample_idx_list)]
-        _k = k if k is not None \
-            else np.round(subsample_y.shape[0] * 0.01).astype(np.int)
+        _k = subsample_y.shape[0] * k if k < 1 else k
+        _k = np.round(_k).astype(np.int)
         nearestNeighbors = sklearn.neighbors.NearestNeighbors(
             n_neighbors=min(subsample_y.shape[0], _k + 1),
             metric=metric, n_jobs=n_jobs

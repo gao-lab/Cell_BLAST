@@ -92,7 +92,8 @@ class Model(object):
 
     @utils.with_self_graph
     def fit(self, data_dict, val_split=0.1, epoch=100,
-            patience=np.inf, on_epoch_end=None, progress_bar=True, **kwargs):
+            patience=np.inf, tolerance=0.0, on_epoch_end=None,
+            progress_bar=True, **kwargs):
         """
         This function wraps an epoch-by-epoch update function into
         complete training process that supports data splitting, shuffling
@@ -148,12 +149,15 @@ class Model(object):
 
                 # Early stop
                 if all_converged:
-                    if np.isfinite(patience) and loss < loss_record:
+                    if np.isfinite(patience) and loss < loss_record + tolerance:
                         self.epoch_report += " Best save..."
                         latest_checkpoint = saver.save(
-                            self.sess, ckpt_file, global_step=epoch_idx)
+                            self.sess, ckpt_file, global_step=epoch_idx,
+                            write_meta_graph=False
+                        )
                         patience_countdown = patience
-                        loss_record = loss
+                        if loss < loss_record:
+                            loss_record = loss
                     else:
                         patience_countdown -= 1
                     print(self.epoch_report)
@@ -165,7 +169,9 @@ class Model(object):
                     if epoch_idx % 10 == 0:  # Save regularly
                         self.epoch_report += " Regular save..."
                         latest_checkpoint = saver.save(
-                            self.sess, ckpt_file, global_step=epoch_idx)
+                            self.sess, ckpt_file, global_step=epoch_idx,
+                            write_meta_graph=False
+                        )
                     print(self.epoch_report)
 
             except KeyboardInterrupt:  # pragma: no cover
@@ -217,7 +223,7 @@ class Model(object):
             if not os.path.exists(path):
                 os.makedirs(path)
             tf.train.Saver(var_list=self.vars_to_save, max_to_keep=1).save(
-                self.sess, os.path.join(path, "save.ckpt"))
+                self.sess, os.path.join(path, "save.ckpt"), write_meta_graph=False)
 
     @utils.with_self_graph
     def _load_weights(self, path, verbose=1):
@@ -243,8 +249,8 @@ class Model(object):
         Parameters
         ----------
         path : str
-            Path to save the model, by default None. If not given, will use
-            ``model.path``.
+            Path to save the model, by default None, in which case ``model.path``
+            will be used.
         config : str
             File to store model configuration (in json format, under ``path``),
             by default "config.json".
@@ -278,8 +284,8 @@ class Model(object):
         verbose : int
             Verbose level, by default 1.
             If verbose = 0, no information will be printed.
-            If verbose = 1, print number of variables that failed to load.
-            If verbose = 2, additionally print variable list that failed to load.
+            If verbose = 1, print the number of variables that failed to load.
+            If verbose = 2, additionally print a variable list that failed to load.
         **kwargs
             Additional keyword arguments to be passed to the class constructor
 

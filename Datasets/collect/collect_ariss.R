@@ -8,24 +8,24 @@ suppressPackageStartupMessages({
 })
 source("../../Utilities/data.R", chdir = TRUE)
 
-#READ label file
-cat("Reading label file...\n")
-metadata1 <- read.table("../download/Ariss/wt_Rbf_and_populations.txt",header=T,stringsAsFactors = F)
-row.names(metadata1) <- metadata1[,'CellName']
-metadata1 <- metadata1[,c('Genotype','cell_type1')]
+#Annotated code for both WT and rbf mutant cells
 
-metadata2 <- read.table("../download/Ariss/Cells_and_population.txt",header=T,row.names=1,stringsAsFactors = F)
-metadata2$Genotype <- 'wt'
+#READ metadata
+cat("Reading metadata...\n")
+#metadata1 <- read.table("../download/Ariss/wt_Rbf_and_populations.txt",header=T,stringsAsFactors = F)
+#row.names(metadata1) <- metadata1[,'CellName']
+#metadata1 <- metadata1[,c('Genotype','Population')]
 
-includedcells<-union(row.names(metadata1),row.names(metadata2))
-metadata <- rbind(metadata2,metadata1)
-metadata <- metadata[which(row.names(metadata) %in% includedcells),]
+metadata <- read.table("../download/Ariss/Cells_and_population.txt",header=T,row.names=1,stringsAsFactors = F)
+#metadata$Genotype <- 'wt'
 
-celltypes <- read.csv('../download/celltypes',sep='\t')
+#includedcells<-union(row.names(metadata1),row.names(metadata2))
+#metadata <- rbind(metadata2,metadata1)
+#metadata <- metadata[which(row.names(metadata) %in% includedcells),]
+colnames(metadata) <- 'cell_type1'
 
-metadata$lifestage <- 'third instar larva stage'
-metadata$organ <- 'eye disc'
-metadata$race <- 'Drosophila melanogaster'
+#metadata$lifestage <- 'third instar larva stage'
+
 
 #READ DGE
 cat("Reading DGE\n")
@@ -50,21 +50,21 @@ for (name in names(data)){
 expmerge <- Reduce(function(x,y) merge(x,y,by=1,all=T),data)
 row.names(expmerge)<-expmerge[,1]
 expmerge<-expmerge[,-1]
+
+#remove "other" cell type 
+metadata <- metadata[metadata$cell_type1 != "other", ,drop=FALSE]
 included_cells <- intersect(rownames(metadata), colnames(expmerge))  
-metadata <- metadata[included_cells, ] 
+metadata <- metadata[included_cells, ,drop=FALSE] 
 expmerge <- expmerge[, included_cells]
 expmerge[is.na(expmerge)]<-0
 
-expressed_genes <- rownames(expmerge)[rowSums(expmerge > 1) > 5]
 expmerge <- Matrix(as.matrix(expmerge),sparse = T)
 
-message("Constructing dataset...") 
-dataset <- new("ExprDataSet",
-               exprs = expmerge, obs = metadata,
-               var = data.frame(row.names = rownames(expmerge)),
-               uns = list(expressed_genes = expressed_genes) 
-)
+#assign cell ontology
+cell_ontology <- read.csv("../cell_ontology/drosophila_eye_disc_cell_ontology.csv")
+cell_ontology <- cell_ontology[, c("cell_type1", "cell_ontology_class", "cell_ontology_id")]
 
-message("Saving data...") 
-write_dataset(dataset, "../data/Ariss/data.h5")
-cat("Done!\n")
+#datasets_meta
+datasets_meta <- read.csv("../ACA_datasets.csv", header = TRUE, row.names=1)
+construct_dataset("../data/Ariss", expmerge, metadata, datasets_meta, cell_ontology, y_low = 0.1)
+message("Done!")

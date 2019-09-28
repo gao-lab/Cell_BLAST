@@ -1,0 +1,96 @@
+nbconvert = \
+    "jupyter nbconvert --to html " \
+    "--ExecutePreprocessor.timeout=3600000 --allow-errors " \
+    "--execute {input} --output {output} > {log} 2>&1"
+
+rule experiments:
+    input:
+        "multilevel_batch.html",
+        "posterior_visualization.html",
+        "n_posterior_sample.html",
+        "n_models.html",
+        "distance_comparison.html",
+        "query_bias.html"
+    output:
+        ".experiments_timestamp"
+    threads: 1
+    shell:
+        "touch {output}"
+
+rule multilevel_batch:
+    input:
+        "multilevel_batch.ipynb"
+    output:
+        "multilevel_batch.html"
+    log:
+        "multilevel_batch.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule posterior_visualization:
+    input:
+        "posterior_visualization.ipynb"
+    output:
+        "posterior_visualization.html"
+    log:
+        "posterior_visualization.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule n_posterior_sample:
+    input:
+        "n_posterior_sample.ipynb"
+    output:
+        "n_posterior_sample.html"
+    log:
+        "n_posterior_sample.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule n_models:
+    input:
+        "n_models.ipynb"
+    output:
+        "n_models.html"
+    log:
+        "n_models.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule distance_comparison:
+    input:
+        "distance_comparison.ipynb"
+    output:
+        "distance_comparison.html"
+    log:
+        "distance_comparison.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule query_bias:
+    input:
+        "query_bias.ipynb"
+    output:
+        "query_bias.html"
+    log:
+        "query_bias.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert

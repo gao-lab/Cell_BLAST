@@ -1,0 +1,102 @@
+import functools
+
+configfile: "database_config.json"
+
+rule database:
+    input:
+        "tarballs",
+        "aca.sql.gz"
+    output:
+        ".database_timestamp"
+    threads: 1
+    shell:
+        "touch {output}"
+
+rule database_export:
+    input:
+        ".database_build_datasets",
+        ".database_build_cells"
+    output:
+        "aca.sql.gz"
+    threads: 1
+    shell:
+        "mysqldump -u caozj -p aca | gzip -9 > {output}"
+
+rule database_build_cells:
+    input:
+        expand("{notebook}/.finished", notebook=config["notebooks"]),
+        prev=".database_build_datasets",
+        script="build_db_cells.py"
+    output:
+        ".database_build_cells"
+    threads: 1
+    script:
+        "build_db_cells.py"
+
+rule database_build_datasets:
+    input:
+        expand("{notebook}/.finished", notebook=config["notebooks"]),
+        init="init.sql",
+        script="build_db_datasets.py"
+    output:
+        ".database_build_datasets"
+    threads: 1
+    script:
+        "build_db_datasets.py"
+
+def build_finish_input(wildcards):
+    checkpoint_output = checkpoints.build.get(notebook=wildcards.notebook).output[0]
+    return expand(
+        "{notebook}/{item}.tar.gz",
+        notebook=checkpoint_output,
+        item=[
+            item for item in os.listdir(checkpoint_output)
+            if os.path.isdir(os.path.join(checkpoint_output, item))
+        ]
+    )
+
+rule build_finish:
+    input:
+        build_finish_input
+    output:
+        "{notebook}/.finished"
+    threads: 1
+    shell:
+        "touch {output}"
+
+checkpoint build:
+    input:
+        ipynb="{notebook}.ipynb",
+        data=lambda wildcards: expand(
+            "../../Datasets/data/{item}/data.h5",
+            item=config[wildcards.notebook]["input"]
+        )
+    output:
+        directory("{notebook,^[^./]+$}")
+    log:
+        "{notebook}.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        "jupyter nbconvert --to html " \
+        "--ExecutePreprocessor.timeout=3600000 --allow-errors " \
+        "--execute {input.ipynb} --output {output}.html > {log} 2>&1"
+
+rule compress:
+    input:
+        content="{notebook}/{item}",
+        dir="tarballs"
+    output:
+        "{notebook}/{item}.tar.gz"
+    threads: 1
+    shell:  # Couple soft-linking with compression
+        "tar -czf {output} -C {wildcards.notebook} {wildcards.item} && rm -f tarballs/{wildcards.item}.tar.gz && "
+        "ln -s ../{wildcards.notebook}/{wildcards.item}.tar.gz tarballs/{wildcards.item}.tar.gz"
+
+rule mktarballs:
+    output:
+        directory("tarballs")
+    threads: 1
+    shell:
+        "mkdir {output}"

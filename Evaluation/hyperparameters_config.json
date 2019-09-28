@@ -1,0 +1,32 @@
+{
+    "dimensionality": {
+        "default": 10,
+        "pool": [2, 5, 10, 20, 50]
+    },
+    "hidden_layer": {
+        "default": 128,
+        "pool": [32, 64, 128, 256, 512]
+    },
+    "depth": {
+        "default": 1,
+        "pool": [0, 1, 2]
+    },
+    "cluster": {
+        "default": 20,
+        "pool": [0, 5, 10, 20, 50]
+    },
+    "lambda_prior": {
+        "default": 0.001,
+        "pool": [0.0001, 0.001, 0.01, 0.1, 1.0]
+    },
+    "prob_module": {
+        "default": "NB",
+        "pool": ["NB", "ZINB", "LN", "ZILN"]
+    },
+    "dataset": ["Muraro", "Adam", "Guo", "Plasschaert", "Baron_human", "Bach", "Macosko"],
+    "genes": "seurat_genes",
+    "label": "cell_ontology_class",
+    "seed": 4,
+    "timeout": "12h",
+    "plot_ext": "pdf"
+}

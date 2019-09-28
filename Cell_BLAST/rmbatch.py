@@ -29,7 +29,9 @@ class RMBatch(module.Module):
         return 0.0
 
     def _build_feed_dict(self, data_dict):
-        return {self.batch: utils.densify(data_dict[self.name])}
+        return {
+            self.batch: utils.densify(data_dict[self.name])
+        } if self.name in data_dict else {}
 
     def __bool__(self):
         return True
@@ -48,24 +50,22 @@ class RMBatch(module.Module):
 
 class Adversarial(RMBatch):
     """
-    Build a systematical bias / batch effect removal module that uses
-    batch adversarial training.
+    Build a batch effect correction module that uses adversarial batch alignment.
 
     Parameters
     ----------
     batch_dim : int
         Number of batches.
     h_dim : int
-        Dimensionality of hidden layers in MLP, by default 128.
+        Dimensionality of the hidden layers in the discriminator MLP, by default 128.
     depth : int
-        Number of hidden layers in MLP, by default 1.
+        Number of hidden layers in the discriminator MLP, by default 1.
     dropout : float
         Dropout rate, by default 0.0.
     lambda_reg : float
-        Regularization strength of bias removal, by default 0.01,
+        Strength of batch effect correction, by default 0.01,
     n_steps : int
-        How many discriminator steps to run for each
-        encoder / "generator" step, by default 1.
+        How many discriminator steps to run for each encoder step, by default 1.
     name : str
         Name of the module, by default "AdvBatch".
     """
@@ -110,7 +110,7 @@ class Adversarial(RMBatch):
 
     def _compile(self, optimizer, lr):
         with tf.variable_scope("optimize/%s" % self.scope_safe_name):
-            optimizer = tf.train.__dict__[optimizer](lr)
+            optimizer = getattr(tf.train, optimizer)(lr)
             control_dependencies = []
             for _ in range(self.n_steps):
                 with tf.control_dependencies(control_dependencies):
@@ -137,8 +137,8 @@ class Adversarial(RMBatch):
 
 class MNN(RMBatch):
     """
-    Build a systematical bias / batch effect removal module that uses
-    mutual nearest neighbor (MNN) regularization.
+    Build a batch effect correction module that uses mutual nearest neighbor
+    (MNN) distance regularization.
 
     Parameters
     ----------
@@ -146,12 +146,12 @@ class MNN(RMBatch):
         Number of batches.
     n_neighbors : int
         Number of nearest neighbors to use when selecting mutual nearest
-        neighbors, by default 10.
+        neighbors, by default 5.
     lambda_reg : float
-        Regularization strength of bias removal, by default 1.0,
+        Strength of batch effect correction, by default 1.0,
     delay : int
-        How many epoches to delay before adding MNN regularization,
-        by default 50.
+        How many epoches to delay before using MNN batch correction,
+        by default 20.
     name : str
         Name of the module, by default "MNNBatch".
     """
@@ -216,6 +216,33 @@ class MNN(RMBatch):
 
 
 class MNNAdversarial(Adversarial, MNN):
+    """
+    Build a batch effect correction module that uses adversarial batch alignment
+    among cells with mutual nearest neighbors.
+
+    Parameters
+    ----------
+    batch_dim : int
+        Number of batches.
+    h_dim : int
+        Dimensionality of the hidden layers in the discriminator MLP, by default 128.
+    depth : int
+        Number of hidden layers in the discriminator MLP, by default 1.
+    dropout : float
+        Dropout rate, by default 0.0.
+    lambda_reg : float
+        Strength of batch effect correction, by default 0.01,
+    n_steps : int
+        How many discriminator steps to run for each encoder step, by default 1.
+    n_neighbors : int
+        Number of nearest neighbors to use when selecting mutual nearest
+        neighbors, by default 5.
+    delay : int
+        How many epoches to delay before using MNN batch correction,
+        by default 20.
+    name : str
+        Name of the module, by default "MNNAdvBatch".
+    """
 
     def __init__(
         self, batch_dim, h_dim=128, depth=1, dropout=0.0,

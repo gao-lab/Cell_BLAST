@@ -6,10 +6,8 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib
-
-sys.path.append("..")
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 matplotlib.use("agg")
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import Cell_BLAST as cb
 
 

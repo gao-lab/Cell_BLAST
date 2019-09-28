@@ -9,7 +9,8 @@ import anndata
 import matplotlib
 matplotlib.use("agg")
 
-sys.path.insert(0, "..")
+if os.environ.get("TEST_MODE", "INSTALL") == "DEV":
+    sys.path.insert(0, "..")
 import Cell_BLAST as cb
 
 

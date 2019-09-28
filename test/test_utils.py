@@ -1,7 +1,9 @@
+import os
 import sys
 import unittest
 
-sys.path.insert(0, "..")
+if os.environ.get("TEST_MODE", "INSTALL") == "DEV":
+    sys.path.insert(0, "..")
 import Cell_BLAST as cb
 
 

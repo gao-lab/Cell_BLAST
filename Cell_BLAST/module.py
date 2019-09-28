@@ -33,7 +33,7 @@ class Module(object):
                 os.makedirs(path)
             tf.train.Saver(
                 var_list=self.vars_to_save, max_to_keep=1
-            ).save(sess, os.path.join(path, "save.ckpt"))
+            ).save(sess, os.path.join(path, "save.ckpt"), write_meta_graph=False)
 
     def _load_weights(self, sess, path, verbose=1, fast=False):
         if fast:
@@ -59,7 +59,7 @@ class Module(object):
 
     @staticmethod
     def _build_feed_dict(*args, **kwargs):
-        return dict()
+        return {}
 
     def __bool__(self):
         return False

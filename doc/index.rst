@@ -9,12 +9,13 @@ Welcome to Cell BLAST's documentation!
 **Cell_BLAST** is a single cell transcriptome querying tool, based on
 a deep generative model (currently named **DIRECTi**).
 
-**Cell_BLAST** performs querying based on parametric cell embeddings from
-**DIRECTi**, using posterior distribution distances. Information like cell type
-annotation can then be transferred from reference to query data based on
-Cell BLAST hits.
+**Cell_BLAST** performs querying based on low-dimensional cell embeddings
+learned by a generative model, with cell-to-cell similarity estimated using
+the distance between their posterior distributions. Annotations like cell types
+can then be transferred from reference to query cells based on query hits.
 
-.. image:: _static/flowchart.png
+.. image:: _static/flowchart.svg
+
 
 Contents
 ========
@@ -33,3 +34,8 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+Publication
+===========
+`Cell BLAST: Searching large-scale scRNA-seq databases via unbiased cell embedding <https://www.biorxiv.org/content/10.1101/587360v2/>`_

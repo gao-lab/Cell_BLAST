@@ -114,18 +114,11 @@ vignettes/*.pdf
 *.h5ad
 *.pxm
 *.Rproj
-.Rprofile
-packrat
 /Playground
-/Reproduce/
-/Logs
 /Results
-/Temp
-/Notebooks
 ~$*
 tmp*
 *.ipynb
-packrat/lib*/
 github
 .DS_Store
 .Rproj.user
@@ -133,3 +126,7 @@ github
 web
 *.bak
 .git-*
+*.old
+packrat/lib*/
+packrat/src/
+.snakemake

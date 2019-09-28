@@ -1,0 +1,13 @@
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,remark,study,clusterID
+SPG,spermatogonia,spermatogonium,CL:0000020,exact,Green,1
+Prelep,preleptotene cell,primary spermatocyte,CL:0000656,larger than exact,Green,2
+Prelep(1),preleptotene cell,primary spermatocyte,CL:0000657,larger than exact,Green,3
+Scytes,meiotic spermatocytes,spermatocyte,CL:0000017,exact,Green,4
+Scytes(1),meiotic spermatocytes,spermatocyte,CL:0000017,exact,Green,5
+Scytes(2),meiotic spermatocytes,spermatocyte,CL:0000017,exact,Green,6
+Scytes(3),meiotic spermatocytes,spermatocyte,CL:0000017,exact,Green,7
+Scytes(4),meiotic spermatocytes,spermatocyte,CL:0000017,exact,Green,8
+Stids,post-meiotic haploid round spermatids,spermatid,CL:0000018,exact,Green,9
+Stids(1),post-meiotic haploid round spermatids,spermatid,CL:0000019,exact,Green,10
+Stids(2),post-meiotic haploid round spermatids,spermatid,CL:0000020,exact,Green,11
+ES,elongating spermatids,spermatid,CL:0000021,exact,Green,12

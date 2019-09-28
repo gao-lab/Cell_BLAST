@@ -1,0 +1,9 @@
+{
+    "basal cell of epithelium of trachea": ["Aqp3", "Krt5", "Dapl1", "Hspa1a", "Trp63", "Sfn", "Igfbp7", "Perp", "Krt15"],
+    "club cell": ["Scgb1a1", "Krt15", "Cyp2f2", "Lypd2", "Cbr2", "Bpifa1", "Sftpd", "Mgst1", "Scgb3a2", "Tst", "Wfdc2"],
+    "ciliated columnar cell of tracheobronchial tree": ["Foxj1", "Ccdc153", "Ccdc113", "Mlf1", "Lztfl1"],
+    "brush cell of trachea": ["Dclk1", "Lrmp", "Gng13", "Ltc4s", "Plac8", "Gnb3", "Alox5ap", "Ptpn18", "Trpm5"],
+    "tracheal goblet cell": ["Dmbt1", "Scgb3a1", "Sbpl", "Dcpp3", "Pglyrp1", "Tmed3"],
+    "lung neuroendocrine cell": ["Chga", "Calca", "Cxcl13", "Pkib", "Scg5", "Nov", "Ngf", "Dnajc12"],
+    "ionocyte": ["Ascl3", "Gm933", "Asgr1", "Moxd1", "Stap1", "Foxi1", "Gnas", "Ldhb", "Cftr"]
+}

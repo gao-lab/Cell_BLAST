@@ -8,13 +8,12 @@ import numpy as np
 import matplotlib
 matplotlib.use("agg")
 
-sys.path.insert(0, "..")
+if os.environ.get("TEST_MODE", "INSTALL") == "DEV":
+    sys.path.insert(0, "..")
 import Cell_BLAST as cb
 cb.config.RANDOM_SEED = 0
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-if "CUDA_VISIBLE_DEVICES" not in os.environ:
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 
 class DirectiTest(unittest.TestCase):
@@ -66,7 +65,8 @@ class DirectiTest(unittest.TestCase):
         ).compile("RMSPropOptimizer", 1e-3)
         model.fit(
             cb.utils.DataDict(
-                exprs=self.data[:, self.data.uns["scmap_genes"]].exprs
+                exprs=self.data[:, self.data.uns["scmap_genes"]].exprs,
+                library_size=np.array(self.data.exprs.sum(axis=1)).reshape((-1, 1))
             ), epoch=300, patience=20
         )
         _ = model.clustering(self.data)
@@ -120,8 +120,8 @@ class DirectiTest(unittest.TestCase):
 
         model = cb.directi.fit_DIRECTi(
             self.data, genes=self.data.uns["scmap_genes"],
-            prob_module="NB",
-            latent_dim=10, batch_effect="cell_type1",  # Just for test
+            prob_module="NB", latent_dim=10, depth=0,
+            batch_effect="cell_type1",  # Just for test
             rmbatch_module="RMBatch",
             epoch=3, path="./test_directi"
         )
@@ -152,7 +152,7 @@ class DirectiTest(unittest.TestCase):
 
         model = cb.directi.fit_DIRECTi(
             self.data, genes=self.data.uns["scmap_genes"],
-            prob_module="ZIG",
+            prob_module="ZILN",
             latent_dim=10, batch_effect="cell_type1",  # Just for test
             rmbatch_module="MNNAdversarial",
             epoch=3, path="./test_directi"
@@ -168,6 +168,7 @@ class DirectiTest(unittest.TestCase):
 
         model = cb.directi.fit_DIRECTi(
             self.data, genes=self.data.uns["scmap_genes"],
+            prob_module="LN",
             latent_dim=10, batch_effect="cell_type1",  # Just for test
             rmbatch_module="AdaptiveMNNAdversarial",
             epoch=3, path="./test_directi"

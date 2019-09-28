@@ -55,16 +55,17 @@ class Latent(module.Module):
 
 class Gau(Latent):
     """
-    Build a Gaussian latent variable module.
+    Build a Gaussian latent module. The Gaussian latent variable is used as
+    cell embedding.
 
     Parameters
     ----------
     latent_dim : int
-        Dimensionality of latent variable.
+        Dimensionality of the latent variable.
     h_dim : int
-        Dimensionality of hidden layers in MLP, by default 128.
+        Dimensionality of the hidden layers in the encoder MLP, by default 128.
     depth : int
-        Number of hidden layers in MLP, by default 1.
+        Number of hidden layers in the encoder MLP, by default 1.
     dropout : float
         Dropout rate, by default 0.0.
     lambda_reg : float
@@ -83,7 +84,8 @@ class Gau(Latent):
             dense_kwargs = [dict(
                 deviation_regularizer=self.deviation_regularizer
             )] * self.depth
-            dense_kwargs[0]["weights_trainable"] = not self.fine_tune
+            if dense_kwargs:
+                dense_kwargs[0]["weights_trainable"] = not self.fine_tune
             ptr = nn.mlp(
                 x, [self.h_dim] * self.depth,
                 dropout=self.dropout, batch_normalization=True,
@@ -122,7 +124,7 @@ class Gau(Latent):
 
     def _compile(self, optimizer, lr):
         with tf.variable_scope("optimize/%s" % self.scope_safe_name):
-            optimizer = tf.train.__dict__[optimizer]
+            optimizer = getattr(tf.train, optimizer)
             self.step = optimizer(lr).minimize(
                 self.lambda_reg * self.gau_d_loss,
                 var_list=tf.get_collection(
@@ -135,21 +137,21 @@ class Gau(Latent):
 
 class CatGau(Latent):
     """
-    Build a double latent variable module, with a continuous Gaussian
-    latent variable and a one-hot categorical latent variable for intrainsic
-    clustering of the data. These two are then combined into a single embedding
-    vector.
+    Build a double latent module, with a continuous Gaussian latent variable
+    and a one-hot categorical latent variable for intrinsic clustering of
+    the data. These two latent variabels are then combined into a single
+    cell embedding vector.
 
     Parameters
     ----------
     latent_dim : int
-        Dimensionality of latent variable.
+        Dimensionality of the Gaussian latent variable.
     cat_dim : int
         Number of intrinsic clusters.
     h_dim : int
-        Dimensionality of hidden layers in MLP, by default 128.
+        Dimensionality of the hidden layers in the encoder MLP, by default 128.
     depth : int
-        Number of hidden layers in MLP, by default 1.
+        Number of hidden layers in the encoder MLP, by default 1.
     dropout : float
         Dropout rate, by default 0.0.
     multiclass_adversarial : bool
@@ -160,8 +162,8 @@ class CatGau(Latent):
         Whether to enable heuristic cluster merging during training,
         by default False.
     min_silhouette : float
-        Minimal average silhouette score required to prevent an instrinsic
-        cluster from being merged, by default 0.0.
+        Minimal average silhouette score below which intrinsic clusters will be
+        merged, by default 0.0.
     patience : int
         Execute heuristic cluster merging under a "fast-ring" early stop
         mechanism, with early stop patience specified by this argument,
@@ -192,7 +194,8 @@ class CatGau(Latent):
             dense_kwargs = [dict(
                 deviation_regularizer=self.deviation_regularizer
             )] * self.depth
-            dense_kwargs[0]["weights_trainable"] = not self.fine_tune
+            if dense_kwargs:  # Fix the first laye2yyr
+                dense_kwargs[0]["weights_trainable"] = not self.fine_tune
             ptr = nn.mlp(
                 x, [self.h_dim] * self.depth,
                 dropout=self.dropout, batch_normalization=True,
@@ -328,7 +331,7 @@ class CatGau(Latent):
 
     def _compile(self, optimizer, lr):
         with tf.variable_scope("optimize/%s" % self.scope_safe_name):
-            optimizer = tf.train.__dict__[optimizer]
+            optimizer = getattr(tf.train, optimizer)
             self.step = optimizer(lr).minimize(
                 self.lambda_reg * (self.cat_d_loss + self.gau_d_loss),
                 var_list=tf.get_collection(
@@ -370,7 +373,7 @@ class CatGau(Latent):
 
             # Identify cluster heads that are not assigned any samples
             cluster = model._fetch(
-                self.cat, train_data_dict["exprs"]
+                self.cat, train_data_dict
             ).argmax(axis=1).astype(np.int)
             population = np.eye(self.cat_dim)[cluster, :].sum(axis=0)
             remove_idx = set(np.where(
@@ -380,7 +383,7 @@ class CatGau(Latent):
 
             # Identify clusters that are not clearly separated
             if not remove_idx:
-                latent = model.inference(train_data_dict["exprs"])
+                latent = model._fetch(self.latent, train_data_dict)
                 if train_data_dict.size > 10000:
                     subsample_idx = model.random_state.choice(
                         train_data_dict.size, 10000, replace=False)
@@ -441,21 +444,21 @@ class CatGau(Latent):
 
 class SemiSupervisedCatGau(CatGau):
     """
-    Build a double latent variable module, with a continuous Gaussian
-    latent variable and a one-hot categorical latent variable for intrinsic
-    clustering of the data. The categorical latent supports semi-supervision.
-    The two latents are then combined into a single embedding vector.
+    Build a double latent module, with a continuous Gaussian latent variable
+    and a one-hot categorical latent variable for intrinsic clustering of
+    the data. The categorical latent supports semi-supervision. The two latent
+    variables are then combined into a single cell embedding vector.
 
     Parameters
     ----------
     latent_dim : int
-        Dimensionality of latent variable.
+        Dimensionality of the Gaussian latent variable.
     cat_dim : int
         Number of intrinsic clusters.
     h_dim : int
-        Dimensionality of hidden layers in MLP, by default 128.
+        Dimensionality of the hidden layers in the encoder MLP, by default 128.
     depth : int
-        Number of hidden layers in MLP, by default 1.
+        Number of hidden layers in the encoder MLP, by default 1.
     dropout : float
         Dropout rate, by default 0.0.
     multiclass_adversarial : bool
@@ -477,11 +480,11 @@ class SemiSupervisedCatGau(CatGau):
     background_catp : float
         Unnormalized background prior distribution of the intrinsic
         clustering latent, by default 1e-3.
-        For each supervised cell in a minibatch,  unnormalized prior
+        For each supervised cell in a minibatch, unnormalized prior
         probability of the corresponding cluster will increase by 1,
         so this parameter determines how much to trust supervision class
-        frequency. Additionally it also balances between supervision and
-        identifying new clusters.
+        frequency, and it balances between supervision and identifying new
+        clusters.
     lambda_reg : float
         Regularization strength on the latent variables, by default 0.001.
     name : str
@@ -548,7 +551,9 @@ class SemiSupervisedCatGau(CatGau):
         )(training_flag, scope)
 
     def _build_feed_dict(self, data_dict):
-        return {self.cats: utils.densify(data_dict[self.name])}
+        return {
+            self.cats: utils.densify(data_dict[self.name])
+        } if self.name in data_dict else {}
 
     def _safe_cat(self, model):
         return np.where(model.sess.run(self.cats_coverage))[0]

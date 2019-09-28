@@ -33,24 +33,24 @@ class DIRECTi(model.Model):
     genes : pandas.Series, numpy.ndarray (1d), list
         Genes to use in the model.
     latent_module : Cell_BLAST.latent.Latent
-        Module for latent variable / encoder.
+        Module for latent variable (encoder module).
     prob_module : Cell_BLAST.prob.ProbModel
-        Module for data probabilistic model / decoder.
+        Module for data generative modeling (decoder module).
     rmbatch_modules : list
-        List of modules for systematical bias / batch effect removal,
-        by default None.
+        List of modules for batch effect correction, by default None.
     denoising : bool
-        Whether to add noise to input during training, by default True.
+        Whether to add noise to the input during training (source of randomness
+        in modeling the approximate posterior), by default True.
     decoder_feed_batch : str, bool
         How to feed batch information to the decoder, by default "nonlinear".
         Available options are listed below:
-        "nonlinear": concatenate with input layer and go through all nonlinear
-        transformations in the decoder;
-        "linear": concatenate with last hidden layer and only go through
-        the last linear transformation (potentially one last non-linear
-        transformation);
-        "both": concatenate with both input layer and last hidden layer;
-        False: do not feed batch information to decoder.
+        "nonlinear": concatenate with the cell embedding vector and go through
+        all nonlinear transformations in the decoder;
+        "linear": concatenate with last hidden layer in the decoder and only go
+        through the last linear transformation;
+        "both": concatenate with both the cell embedding vector and the last
+        encoder hidden layer;
+        False: do not feed batch information to the decoder.
     path : str
         Specifies a path where model configuration, checkpoints,
         as well as the final model will be saved, by default "."
@@ -66,14 +66,14 @@ class DIRECTi(model.Model):
     Examples
     --------
 
-    :ref:`fit_DIRECTi` offers an easy to use wrapper of this ``DIRECTi`` model,
-    which should satisfy most needs. We suggest using that wrapper first.
-    However, if you do wish to directly use the ``DIRECTi`` class, here's a
-    brief instruction:
+    The :ref:`fit_DIRECTi` function offers an easy to use wrapper of this
+    ``DIRECTi`` model class, which is the preferred API and should satisfy most
+    needs. We suggest using the :ref:`fit_DIRECTi` wrapper first.
+    However, if you do wish to use this ``DIRECTi`` class, here's a brief instruction:
 
-    First you need to select proper modules. ``DIRECTi`` is made up of three
-    kinds of modules, a latent (encoder) module, a probabilistic model (decoder)
-    module and optional batch effect removal modules:
+    First you need to select the proper modules required to build a complete model.
+    ``DIRECTi`` is made up of three types of modules, a latent (encoder) module,
+    a generative (decoder) module and optional batch effect correction modules:
 
     >>> latent_module = Cell_BLAST.latent.Gau(latent_dim=10)
     >>> prob_module = Cell_BLAST.prob.ZINB()
@@ -82,16 +82,17 @@ class DIRECTi(model.Model):
     ... )]
 
     We also need a list of gene names which defines the gene set on which
-    the model is fitted. It can also be accessed later to help ensure correct
-    gene set of the input data.
-    Then we can assemble them into a complete DIRECTi model and compile it:
+    the model will be fitted. It can also be accessed later to help ensure
+    correct gene set of the input data.
+    Then we can assemble them into a complete DIRECTi model, and compile it
+    (get ready for model fitting):
 
     >>> model = Cell_BLAST.directi.DIRECTi(
     ...     genes, latent_module, prob_module, rmbatch_modules
     ... ).compile(optimizer="RMSPropOptimizer", lr=1e-3)
 
     To fit the model, we need a ``Cell_BLAST.utils.DataDict`` object,
-    which can be thought of as a dict of array-like objects.
+    which can be seen as a dict of array-like objects.
 
     In the ``DataDict``, we require an "exprs" slot that stores the
     :math:`cell \\times gene` expression matrix.
@@ -99,12 +100,12 @@ class DIRECTi(model.Model):
     require a slot containing one-hot encoded supervision labels. Unsupervised
     cells should have all zeros in the corresponding rows. Name of the slot
     should be the same as name of the semi-supervision latent module.
-    If batch effect removal modules are used, we additionally require slots
-    containing one-hot encoded batch identity. Name of the slots should be
-    the same as name of batch removal modules.
+    If batch effect correction modules are used, we additionally require slots
+    containing one-hot encoded batch information. Name of the slots should be
+    the same as name of batch correction modules.
 
-    Here's how to construct a data dict from a ``Cell_BLAST.data.ExprDataSet``
-    object:
+    Here's an example on how to construct a data dict from a
+    ``Cell_BLAST.data.ExprDataSet`` object:
 
     >>> data_dict = Cell_BLAST.utils.DataDict(
     ...     exprs=data_obj[:, model.genes].exprs,
@@ -115,16 +116,15 @@ class DIRECTi(model.Model):
 
     >>> model.fit(data_dict)
 
-    At this point we have obtained a fitted DIRECTi model object, which is also
-    the return value if the ``fit_DIRECTi`` function.
+    At this point we have obtained a fitted DIRECTi model object (which is also
+    the return value if the ``fit_DIRECTi`` function).
     We can use this model to project transriptomes into the low dimensional
-    latent space by using the ``inference`` method. You may pass it to
+    cell embedding space by using the ``inference`` method. You may pass it to
     ``latent`` slot in the original data object, which facilitates subsequent
-    visualization of the latent space:
+    visualization of the latent embedding space:
 
     >>> data_obj.latent = model.inference(data_obj)
     >>> data_obj.visualize_latent("cell_type")
-
     """
     _TRAIN = 1
     _TEST = 0
@@ -169,13 +169,18 @@ class DIRECTi(model.Model):
         with tf.name_scope("placeholder/"):
             self.x = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.x_dim), name="x")
+            self.library_size = tf.placeholder(
+                dtype=tf.float32, shape=(None, 1), name="library_size")
             self.training_flag = tf.placeholder(
                 dtype=tf.bool, shape=(), name="training_flag")
 
         # Preprocessing
-        self.noisy_x = prob_module._add_noise(self.x) \
-            if denoising else self.x
-        preprocessed_x = prob_module._preprocess(self.noisy_x)
+        with tf.name_scope("normalize"):
+            normalized_x = prob_module._normalize(self.x, self.library_size)
+        with tf.name_scope("noise"):
+            self.noisy_x = prob_module._add_noise(normalized_x) if denoising else normalized_x
+        with tf.name_scope("preprocess"):
+            preprocessed_x = prob_module._preprocess(self.noisy_x)
 
         # Encoder
         self.latent = self.latent_module._build_latent(
@@ -231,7 +236,7 @@ class DIRECTi(model.Model):
         with tf.variable_scope("optimize/main"):
             control_dependencies = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(control_dependencies):
-                self.step = tf.train.__dict__[optimizer](lr).minimize(
+                self.step = getattr(tf.train, optimizer)(lr).minimize(
                     self.loss, var_list=tf.get_collection(
                         tf.GraphKeys.TRAINABLE_VARIABLES, "encoder"
                     ) + tf.get_collection(
@@ -251,6 +256,7 @@ class DIRECTi(model.Model):
             nonlocal loss_dict
             feed_dict = {
                 self.x: utils.densify(data_dict["exprs"]),
+                self.library_size: data_dict["library_size"],
                 **(self.latent_module._build_feed_dict(data_dict)),
                 **(self.prob_module._build_feed_dict(data_dict)),
                 self.training_flag: True
@@ -287,6 +293,7 @@ class DIRECTi(model.Model):
             nonlocal loss_dict
             feed_dict = {
                 self.x: utils.densify(data_dict["exprs"]),
+                self.library_size: data_dict["library_size"],
                 **(self.latent_module._build_feed_dict(data_dict)),
                 **(self.prob_module._build_feed_dict(data_dict)),
                 self.training_flag: False
@@ -312,8 +319,8 @@ class DIRECTi(model.Model):
         self.summarizer.add_summary(manual_summary, self.sess.run(self.epoch))
         return loss_dict[self.early_stop_loss]
 
-    def fit(self, data_dict, batch_size=128, val_split=0.1, epoch=100,
-            patience=np.inf, on_epoch_end=None, progress_bar=False):
+    def fit(self, data_dict, batch_size=128, val_split=0.1, epoch=1000,
+            patience=30, tolerance=0.0, on_epoch_end=None, progress_bar=False):
         """
         Fit the model.
 
@@ -326,11 +333,11 @@ class DIRECTi(model.Model):
         val_split : float
             Fraction of data to use for validation, by default 0.1.
         epoch : int
-            Maximal training epochs, by default 100.
+            Maximal training epochs, by default 1000.
         patience : int
-            Early stop patience, by default numpy.inf, meaning no early stop.
-            Model training stops when best validation loss does not decrease
-            for a consecutive ``patience`` epochs.
+            Early stop patience, by default 30. Model training stops when the
+            best validation loss does not decrease for a consecutive
+            ``patience`` epochs.
         on_epoch_end : list
             List of functions to be executed at the end of each epoch,
             by default None.
@@ -352,59 +359,68 @@ class DIRECTi(model.Model):
             on_epoch_end += rmbatch_module.on_epoch_end
         return super(DIRECTi, self).fit(
             data_dict, batch_size=batch_size, val_split=val_split, epoch=epoch,
-            patience=patience, on_epoch_end=on_epoch_end,
+            patience=patience, tolerance=tolerance, on_epoch_end=on_epoch_end,
             progress_bar=progress_bar
         )
 
     @utils.with_self_graph
-    def _fetch(self, tensor, x=None, batch_size=4096,
+    def _fetch(self, tensor, data_dict=None, batch_size=4096,
                noisy=False, progress_bar=False, random_seed=config._USE_GLOBAL):
         random_seed = config.RANDOM_SEED \
             if random_seed == config._USE_GLOBAL else random_seed
 
-        if x is None:
+        if data_dict is None:  # Getting model weights
             return self.sess.run(tensor)
 
         tensor_shape = tuple(
             item for item in tensor.get_shape().as_list() if item is not None)
-        result = np.empty((x.shape[0],) + tuple(tensor_shape))
+        result = np.empty((data_dict.shape[0],) + tuple(tensor_shape))
         random_state = np.random.RandomState(seed=random_seed)
 
         @utils.minibatch(batch_size, desc="fetch", use_last=True,
                          progress_bar=progress_bar)
-        def _fetch(x, result):
-            feed_dict = {self.training_flag: False}
-            x = utils.densify(x)
-            feed_dict[self.x] = x
-            feed_dict[self.noisy_x] = random_state.poisson(x) if noisy else x
+        def _fetch_minibatch(data_dict, result):
+            x = data_dict["exprs"]
+            normalized_x = self.prob_module._normalize(x, data_dict["library_size"])
+            feed_dict = {
+                self.x: utils.densify(x),
+                self.noisy_x: self.prob_module._add_noise(
+                    utils.densify(normalized_x), random_state
+                ) if noisy else utils.densify(normalized_x),
+                self.library_size: data_dict["library_size"],
+                **(self.latent_module._build_feed_dict(data_dict)),
+                **(self.prob_module._build_feed_dict(data_dict)),
+                self.training_flag: False
+            }
             # Tensorflow random samplers are fixed after creation,
             # making it impossible to re-seed and generate reproducible
             # results, so we use numpy samplers instead.
             # Also, local RandomState object is used to ensure thread-safety.
             result[:] = self.sess.run(tensor, feed_dict=feed_dict)
 
-        _fetch(x, result)
+        _fetch_minibatch(data_dict, result)
         return result
 
-    def inference(self, x, batch_size=4096, noisy=0, progress_bar=False,
+    def inference(self, dataset, batch_size=4096, n_posterior=0, progress_bar=False,
                   priority="auto", random_seed=config._USE_GLOBAL):
         """
-        Project expression profiles into latent space.
+        Project expression profiles into the cell embedding space.
 
         Parameters
         ----------
-        x : array_like, or Cell_BLAST.data.ExprDataSet
-            :math:`cell \\times gene` expression matrix.
+        x : Cell_BLAST.data.ExprDataSet
+            Dataset for which to compute cell embeddings.
         batch_size : int
-            Minibatch size to use when doing projection, by default 4096.
-            Changing this may slighly affect speed, but not inference result.
-        noisy : int
-            How many noisy samples to project, by default 0.
-            If set to 0, no noise is added to the input during projection, so
-            result is deterministic. If greater than 0, produces ``noisy``
-            number of noisy space samples (posterior samples) for each cell.
+            Minibatch size to use when computing cell embeddings,
+            by default 4096. Changing this may slighly affect speed,
+            but not the result.
+        n_posterior : int
+            How many posterior samples to fetch, by default 0.
+            If set to 0, the posterior point estimate is computed.
+            If greater than 0, produces ``n_posterior`` number of
+            posterior samples for each cell.
         progress_bar : bool
-            Whether to show progress bar duing projection, by default True.
+            Whether to show progress bar duing projection, by default False.
         priority : {"auto", "speed", "memory"}
             Controls which one of speed or memory should be prioritized, by
             default "auto", meaning that data with more than 100,000 cells will
@@ -418,46 +434,53 @@ class DIRECTi(model.Model):
         -------
         latent : numpy.ndarray
             Coordinates in the latent space.
-            If ``noisy`` is 0, will be in shape :math:`cell \\times latent\\_dim`.
-            If ``noisy`` is greater than 0, will be in shape
+            If ``n_posterior`` is 0, will be in shape :math:`cell \\times latent\\_dim`.
+            If ``n_posterior`` is greater than 0, will be in shape
             :math:`cell \\times noisy \\times latent\\_dim`.
         """
         random_seed = config.RANDOM_SEED \
             if random_seed == config._USE_GLOBAL else random_seed
-        if isinstance(x, data.ExprDataSet):
-            x = x[:, self.genes].exprs
-        if noisy > 0:
+        x = dataset[:, self.genes].exprs
+        l = np.array(dataset.exprs.sum(axis=1)).reshape((-1, 1)) \
+            if "__libsize__" not in dataset.obs.columns \
+            else dataset.obs["__libsize__"].values.reshape((-1, 1))
+        if n_posterior > 0:
             if priority == "auto":
-                priority = "memory" if x.shape[0] > 1e5 else "speed"
+                priority = "memory" if x.shape[0] > 1e4 else "speed"
             if priority == "speed":
-                xrep = [x] * noisy
                 if scipy.sparse.issparse(x):
-                    xrep = scipy.sparse.vstack(xrep)
+                    xrep = x.tocsr()[np.repeat(np.arange(x.shape[0]), n_posterior)]
                 else:
-                    xrep = np.vstack(xrep)
-                lrep = self._fetch(
-                    self.latent, xrep, batch_size, True, progress_bar, random_seed)
-                return np.stack(np.split(lrep, noisy), axis=1)
+                    xrep = np.repeat(x, n_posterior, axis=0)
+                lrep = np.repeat(l, n_posterior, axis=0)
+                data_dict = utils.DataDict(exprs=xrep, library_size=lrep)
+                return self._fetch(
+                    self.latent, data_dict, batch_size, True, progress_bar, random_seed
+                ).astype(np.float32).reshape((x.shape[0], n_posterior, -1))
             else:  # priority == "memory":
+                data_dict = utils.DataDict(exprs=x, library_size=l)
                 return np.stack([self._fetch(
-                    self.latent, x, batch_size, True, progress_bar,
+                    self.latent, data_dict, batch_size, True, progress_bar,
                     (random_seed + i) if random_seed is not None else None
-                ) for i in range(noisy)], axis=1)
-        return self._fetch(self.latent, x, batch_size, False, progress_bar)
+                ).astype(np.float32) for i in range(n_posterior)], axis=1)
+        data_dict = utils.DataDict(exprs=x, library_size=l)
+        return self._fetch(
+            self.latent, data_dict, batch_size, False, progress_bar
+        ).astype(np.float32)
 
-    def clustering(self, x, batch_size=4096, progress_bar=True):
+    def clustering(self, dataset, batch_size=4096, return_confidence=False, progress_bar=False):
         """
         Get model intrinsic clustering of the data.
 
         Parameters
         ----------
-        x : array_like or Cell_BLAST.data.ExprDataSet
-            :math:`cell \\times gene` expression matrix.
+        x : Cell_BLAST.data.ExprDataSet
+            Dataset for which to obtain the intrinsic clustering.
         batch_size : int
             Minibatch size to use when getting clusters, by default 4096.
             Changing this may slighly affect speed, but not inference result.
         progress_bar : bool
-            Whether to show progress bar during projection, by default True.
+            Whether to show progress bar during projection, by default False.
 
         Returns
         -------
@@ -468,11 +491,17 @@ class DIRECTi(model.Model):
         """
         if not isinstance(self.latent_module, latent.CatGau):
             raise Exception("Model has no intrinsic clustering")
-        if isinstance(x, data.ExprDataSet):
-            x = x[:, self.genes].exprs
-        cat = self._fetch(self.latent_module.cat, x, batch_size,
-                          False, progress_bar)
-        return cat.argmax(axis=1), cat.max(axis=1)
+        x = dataset[:, self.genes].exprs
+        l = np.array(dataset.exprs.sum(axis=1)).reshape((-1, 1)) \
+            if "__libsize__" not in dataset.obs.columns \
+            else dataset.obs["__libsize__"].values.reshape((-1, 1))
+        data_dict = utils.DataDict(exprs=x, library_size=l)
+        cat = self._fetch(
+            self.latent_module.cat, data_dict, batch_size, False, progress_bar
+        ).astype(np.float32)
+        if return_confidence:
+            return cat.argmax(axis=1), cat.max(axis=1)
+        return cat.argmax(axis=1)
 
     def _save_weights(self, path):
         super(DIRECTi, self)._save_weights(os.path.join(path, "main"))
@@ -561,45 +590,44 @@ def fit_DIRECTi(
     dataset : Cell_BLAST.data.ExprDataSet
         Dataset to be fitted.
     genes : array_like
-        Genes to use in the model, should be a subset of ``dataset.var_names``,
+        Genes to fit on, should be a subset of ``dataset.var_names``,
         by default None, which means all genes are used.
     supervision : str
-        Specifies a character column in ``dataset.obs``, for use as
+        Specifies a column in the ``dataset.obs`` table for use as
         (semi-)supervision, default is None.
-        If value in the specified column is an emtpy string, corresponding
+        If value in the specified column is emtpy, the corresponding
         cells will be treated as unsupervised.
     batch_effect : str, list
-        Specifies one or more character columns in ``dataset.obs``
-        for use as batch effect to be removed, default is None.
+        Specifies one or more columns in the ``dataset.obs`` table for use as
+        batch effect to be corrected, default is None.
     latent_dim : int
-        Latent space dimensionality, by default 10.
+        Latent space (cell embedding) dimensionality, by default 10.
     cat_dim : int
         Number of intrinsic clusters, by default None.
-        Note the difference that if not specified (None), only the continuous
-        Gaussian latent is used. If set to 1, a single intrinsic cluster is
-        used. Despite the different model structure, performance should be
-        similar.
     h_dim : int
-        Hidden layer dimensionality, by default 128.
-        It is used consistently across all MLPs in the model.
+        Hidden layer dimensionality, by default 128. It is used consistently
+        across all MLPs in the model.
     depth : int
-        Hidden layer depth, by default 1.
-        It is used consistently across all MLPs in the model.
-    prob_module : {"NB", "ZINB", "ZIG"}
-        Probabilistic model to fit, by default "NB". See `Cell_BLAST.prob`
+        Hidden layer depth, by default 1. It is used consistently
+        across all MLPs in the model.
+    prob_module : {"NB", "ZINB", "LN", "ZILN"}
+        Generative model to fit, by default "NB". See the `Cell_BLAST.prob`
         module for details.
     rmbatch_module : str, list
-        Batch effect removing method, by default "Adversarial". If a list
-        is specified, each element specifies the method used for a corresponding
-        batch effect in ``batch_effect`` list.
+        Batch effect correction method, by default "Adversarial". If a list
+        is provided, each element specifies the method to use for a
+        corresponding batch effect in ``batch_effect`` list
+        (in this case the ``rmbatch_module`` list should have the same length
+        as the ``batch_effect`` list).
     latent_module_kwargs : dict
         Keyword arguments to be passed to the latent module, by default None.
     prob_module_kwargs : dict
         Keyword arguments to be passed to the prob module, by default None.
     rmbatch_module_kwargs : dict, list
         Keyword arguments to be passed to the rmbatch module, by default None.
-        If a list is specified, each element specifies keyword arguments
-        for a corresponding batch effect in ``batch_effect`` list.
+        If a list is provided, each element specifies keyword arguments
+        for a corresponding batch effect correction module in the
+        ``rmbatch_module`` list.
     optimizer : str
         Name of optimizer used in training, by default "RMSPropOptimizer".
     learning_rate : float
@@ -613,17 +641,18 @@ def fit_DIRECTi(
     patience : int
         Early stop patience, by default 30.
         Model training stops when best validation loss does not decrease for
-        ``patience`` epochs.
+        a consecutive ``patience`` epochs.
     progress_bar : bool
-        Whether to show progress bar during training, by default False.
+        Whether to show progress bars during training, by default False.
     reuse_weights : str
-        Specifies a path where to reuse weights, by default None.
+        Specifies a path where previously stored model weights can be reused,
+        by default None.
     random_seed : int
         Random seed. If not specified, ``Cell_BLAST.config.RANDOM_SEED``
         will be used, which defaults to None.
     path : str
         Specifies a path where model checkpoints as well as the final model
-        is saved, by default ".".
+        will be saved, by default ".", i.e. the current directory.
 
     Returns
     -------
@@ -643,12 +672,14 @@ def fit_DIRECTi(
     if rmbatch_module_kwargs is None:
         rmbatch_module_kwargs = {}
 
-    data_dict = utils.DataDict()
-    if genes is not None:
-        dataset = dataset[:, genes]
-    else:
+    if genes is None:
         genes = dataset.var_names.values
-    data_dict["exprs"] = dataset.exprs
+    data_dict = utils.DataDict(
+        library_size=np.array(dataset.exprs.sum(axis=1)).reshape((-1, 1))
+            if "__libsize__" not in dataset.obs.columns
+            else dataset.obs["__libsize__"].values.reshape((-1, 1)),
+        exprs=dataset[:, genes].exprs
+    )
 
     if batch_effect is None:
         batch_effect = []
@@ -719,11 +750,11 @@ def fit_DIRECTi(
             raise ValueError("Invalid rmbatch method!")
         # else "RMBatch" or "MNN"
         kwargs.update(_rmbatch_module_kwargs)
-        rmbatch_list.append(rmbatch.__dict__[_rmbatch_module](**kwargs))
+        rmbatch_list.append(getattr(rmbatch, _rmbatch_module)(**kwargs))
 
     kwargs = dict(h_dim=h_dim, depth=depth)
     kwargs.update(prob_module_kwargs)
-    prob_module = prob.__dict__[prob_module](**kwargs)
+    prob_module = getattr(prob, prob_module)(**kwargs)
     model = DIRECTi(
         genes=genes,
         latent_module=latent_module,
@@ -731,8 +762,7 @@ def fit_DIRECTi(
         rmbatch_modules=rmbatch_list,
         path=path,
         random_seed=random_seed
-    )
-    model.compile(optimizer=optimizer, lr=learning_rate)
+    ).compile(optimizer=optimizer, lr=learning_rate)
     if reuse_weights is not None:
         model._load_weights(reuse_weights, verbose=2)
     model.fit(
@@ -747,31 +777,31 @@ def align_DIRECTi(
     rmbatch_module="MNNAdversarial", rmbatch_module_kwargs=None,
     deviation_reg=0.01, batch_size=256, val_split=0.1,
     optimizer="RMSPropOptimizer", learning_rate=1e-3,
-    epoch=100, patience=100, reuse_weights=True,
+    epoch=100, patience=100, tolerance=0.0, reuse_weights=True,
     progress_bar=False, random_seed=config._USE_GLOBAL, path="."
 ):
     """
-    Align datasets starting with an existing DIRECTi model
+    Align datasets starting with an existing DIRECTi model (fine-tuning)
 
     Parameters
     ----------
     model : Cell_BLAST.directi.DIRECTi
-        Pretrained model.
+        A pretrained DIRECTi model.
     original_dataset : Cell_BLAST.directi.ExprDataSet
-        Dataset that the model was originally trained on.
+        The dataset that the model was originally trained on.
     new_dataset : Cell_BLAST.data.ExprDataSet, dict
-        New dataset or dictionary containing new datasets, to be aligned with
-        ``original_dataset``.
+        A new dataset or a dictionary containing new datasets,
+        to be aligned with ``original_dataset``.
     rmbatch_module: str
-        Specifies the systematical bias / batch effect removing method to use
-        for aligning new datasets, by default "MNNAdversarial".
+        Specifies the batch effect correction method to use for aligning new
+        datasets, by default "MNNAdversarial".
     rmbatch_module_kwargs : dict
-        Keyword arguments to be passed to rmbatch module, by default None.
+        Keyword arguments to be passed to the rmbatch module, by default None.
     deviation_reg : float
-        Regularization strength for deviation from original weights, by default
-        0.01. Only applied to decoder (except for last layer which is fixed).
+        Regularization strength for the deviation from original model weights,
+        by default 0.01.
     batch_size : int
-        Size of minibatch used in training, by default 256.
+        Size of minibatches used in training, by default 256.
     val_split : float
         Fraction of data to use for validation, by default 0.1.
     optimizer : str
@@ -783,8 +813,13 @@ def align_DIRECTi(
     patience : int
         Early stop patience, by default 100. Model training stops when best
         validation loss does not decrease for a consecutive ``patience`` epochs.
+    tolerance : float
+        Tolerance of deviation from the lowest validation loss recorded for the
+        "patience countdown" to be reset, by default 0.0.
+        The "patience countdown" is reset if
+        current validation loss < lowest validation loss recorded + ``tolerance``
     reuse_weights : bool
-        Whether to reuse weights of the input model, by default True.
+        Whether to reuse weights of the original model, by default True.
     progress_bar : bool
         Whether to show progress bar during training, by default False.
     random_seed : int
@@ -806,10 +841,13 @@ def align_DIRECTi(
     if rmbatch_module_kwargs is None:
         rmbatch_module_kwargs = {}
     if isinstance(new_dataset, data.ExprDataSet):
-        new_datasets = {"new_dataset": new_dataset}
+        new_datasets = {"__new__": new_dataset}
+    elif isinstance(new_dataset, dict):
+        assert "__original__" not in new_dataset, \
+            "Key `__original__` is now allowed in new datasets."
+        new_datasets = new_dataset.copy()  # shallow
     else:
-        assert isinstance(new_dataset, dict)
-        new_datasets = new_dataset
+        raise TypeError("Invalid type for argument `new_dataset`.")
 
     _config = model._get_config()
     for _rmbatch_module in _config["rmbatch_modules"]:
@@ -817,7 +855,7 @@ def align_DIRECTi(
     kwargs = {
         "class": "Cell_BLAST.rmbatch.%s" % rmbatch_module,
         "batch_dim": len(new_datasets) + 1,
-        "delay": 0, "name": "align"
+        "delay": 0, "name": "__align__"
     }
     if rmbatch_module in (
         "Adversarial", "MNNAdversarial", "AdaptiveMNNAdversarial"
@@ -849,19 +887,30 @@ def align_DIRECTi(
         aligned_model.latent_module, latent.SemiSupervisedCatGau
     ) else None
 
+    assert "__align__" not in original_dataset.obs.columns, \
+        "Please remove column `__align__` from obs of the original dataset."
+    original_dataset = original_dataset.copy()  # shallow
+    original_dataset.obs = original_dataset.obs.copy(deep=False)
+    if "__libsize__" not in original_dataset.obs.columns:
+        original_dataset.obs["__libsize__"] = np.array(original_dataset.exprs.sum(axis=1)).ravel()
     original_dataset = original_dataset[:, model.genes]
-    assert "align" not in original_dataset.obs.columns
     for key in new_datasets.keys():
-        assert "align" not in new_datasets[key].obs.columns
+        assert "__align__" not in new_datasets[key].obs.columns, \
+            "Please remove column `__align__` from new dataset %s." % key
+        new_datasets[key] = new_datasets[key].copy()  # shallow
+        new_datasets[key].obs = new_datasets[key].obs.copy(deep=False)
+        new_datasets[key].obs = new_datasets[key].obs.loc[:, new_datasets[key].obs.columns == "__libsize__"]
+        if "__libsize__" not in new_datasets[key].obs.columns:
+            new_datasets[key].obs["__libsize__"] = np.array(new_datasets[key].exprs.sum(axis=1)).ravel()
         new_datasets[key] = new_datasets[key][:, model.genes]
-        new_datasets[key].obs = new_datasets[key].obs.loc[:, []]
         # All meta in new datasets are cleared to avoid interference
-    assert "original" not in new_datasets
-    dataset = {"original": original_dataset, **new_datasets}
-    dataset = data.ExprDataSet.merge_datasets(dataset, meta_col="align")
-    dataset = dataset[:, model.genes]  # merge_datasets can change gene order
+    dataset = {"__original__": original_dataset, **new_datasets}
+    dataset = data.ExprDataSet.merge_datasets(dataset, meta_col="__align__")
 
-    data_dict = utils.DataDict(exprs=dataset.exprs)
+    data_dict = utils.DataDict(
+        library_size=dataset.obs["__libsize__"].values.reshape((-1, 1)),
+        exprs=dataset[:, model.genes].exprs  # Ensure order
+    )
     for rmbatch_module in aligned_model.rmbatch_modules:
         data_dict[rmbatch_module.name] = utils.encode_onehot(
             dataset.obs[rmbatch_module.name].astype(object).fillna("IgNoRe"),
@@ -884,6 +933,7 @@ def align_DIRECTi(
 
     aligned_model.fit(
         data_dict, batch_size=batch_size, val_split=val_split,
-        epoch=epoch, patience=patience, progress_bar=progress_bar
+        epoch=epoch, patience=patience, tolerance=tolerance,
+        progress_bar=progress_bar
     )
     return aligned_model

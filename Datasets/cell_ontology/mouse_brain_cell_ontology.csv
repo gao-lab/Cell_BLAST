@@ -21,8 +21,8 @@ Oligodend2,,oligodendrocyte,CL:0000128,exact,Campbell
 Neurons1,,neuron,CL:0000540,exact,Campbell
 Astro,astrocytes,astrocyte,CL:0000127,exact,Chen
 Ependy,ependymocyte,ependymal cell,CL:0000065,exact,Chen
-Epith1,epithelial cell,epithelial cell,CL:0000066,exact,Chen
-Epith2,epithelial cell,epithelial cell,CL:0000066,exact,Chen
+Endo1,endothelial cell,endothelial cell,CL:0000115,exact,Chen
+Endo2,endothelial cell,endothelial cell,CL:0000115,exact,Chen
 GABA1,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
 GABA2,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen
 GABA3,GABAergic neuron,GABAergic neuron,CL:0000617,exact,Chen

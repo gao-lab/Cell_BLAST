@@ -3,7 +3,7 @@
 set -e
 
 # Python
-coverage run --source="../Cell_BLAST" --omit="*/classifier.py,*/metrics.py" ./test.py
+coverage run --source="../Cell_BLAST" --omit="*/metrics.py" ./test.py
 coverage report -m
 
 # R

@@ -6,15 +6,18 @@
 suppressPackageStartupMessages({
     library(loomR)
 })
-
 source("../../Utilities/data.R", chdir = TRUE)
 
 message("Reading expression data...")
 expr <- connect(filename = "../download/Zeisel_2018/l5_all.loom", mode = "r+", skip.validate = TRUE)
-expr_mat <- t(expr[["matrix"]][,])
 genenames <- expr[["row_attrs/Gene"]][]
 accession <- expr[["row_attrs/Accession"]][]
-rownames(expr_mat) <- accession
+gene_mask <- !duplicated(genenames)
+meta_gene <- data.frame(row.names = genenames[gene_mask], accession = accession[gene_mask])
+
+expr_mat <- t(expr[["matrix"]][,])
+expr_mat <- expr_mat[gene_mask, ]
+rownames(expr_mat) <- rownames(meta_gene)
 colnames(expr_mat) <- as.character(1:dim(expr_mat)[2])
 
 message("Reading metadata...")
@@ -35,7 +38,6 @@ meta_df <- data.frame(
     strain = strain
 )
 
-meta_gene = data.frame(row.names = rownames(expr_mat), genenames = genenames)
 
 #assign cell ontology
 cell_ontology <- read.csv("../cell_ontology/nervous_system_cell_ontology.csv")

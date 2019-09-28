@@ -5,7 +5,6 @@ import unittest
 import matplotlib
 matplotlib.use("agg")
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from test_data import *
 from test_utils import *
 from test_directi import *

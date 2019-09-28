@@ -17,7 +17,9 @@ meta_df$region <- "Hypothalamus"
 #clean cell type
 mask <- meta_df$cell_type1 != "zothers"
 expr_mat <- expr_mat[, mask]
-meta_df <- meta_df[mask, c("cell_type1", "donor")]
+meta_df <- meta_df[mask, c("cell_type1", "donor", "region")]
+#Epith to Endo
+meta_df$cell_type1 <- gsub("Epith", "Endo", meta_df$cell_type1)
 
 #assign cell ontology
 cell_ontology <- read.csv("../cell_ontology/mouse_brain_cell_ontology.csv")

@@ -22,10 +22,10 @@ cell_ontology <- read.csv("../cell_ontology/trachea_cell_ontology.csv")
 # datasets_meta
 datasets_meta <- read.csv("../ACA_datasets.csv", header = TRUE, row.names = 1)
 construct_dataset("../data/Montoro_10x", as.matrix(expr_mat), meta_df,
-                  datasets_meta = datasets_meta, cell_ontology = cell_ontology, grouping = "donor")
+                  datasets_meta = datasets_meta, cell_ontology = cell_ontology, grouping = "donor", y_low = 0.8)
 
 mask <- meta_df$cell_type1 != "Ionocyte"
 
-construct_dataset("../data/Montoro_10x_no_ionocyte", as.matrix(expr_mat[, mask]), meta_df[mask, ],
-                  datasets_meta = datasets_meta, cell_ontology = cell_ontology, grouping = "donor")
+construct_dataset("../data/Montoro_10x_noi", as.matrix(expr_mat[, mask]), meta_df[mask, ],
+                  datasets_meta = datasets_meta, cell_ontology = cell_ontology, grouping = "donor", y_low = 0.8)
 message("Done!")

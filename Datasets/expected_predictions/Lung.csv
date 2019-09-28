@@ -1,0 +1,49 @@
+,B cell,T cell,alveolar macrophage,ciliated columnar cell of tracheobronchial tree,classical monocyte,leukocyte,lung endothelial cell,mast cell,myeloid cell,natural killer cell,non-classical monocyte,stromal cell,type II pneumocyte,unassigned,rejected,ambiguous
+B cell,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+T cell,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+alveolar macrophage,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0
+ciliated columnar cell of tracheobronchial tree,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0
+classical monocyte,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0
+leukocyte,1,1,1,0,1,1,0,1,1,1,1,0,0,1,1,1
+lung endothelial cell,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0
+mast cell,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0
+myeloid cell,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0
+natural killer cell,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0
+non-classical monocyte,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0
+stromal cell,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0
+type II pneumocyte,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0
+epithelial cell of lung,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1
+monocyte,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0
+type B pancreatic cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+pancreatic ductal cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+pancreatic D cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+Schwann cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+pancreatic stellate cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+endothelial cell,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1
+pancreatic PP cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+pancreatic A cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+macrophage,0,0,1,0,0,0,0,0,1,0,0,0,0,1,1,1
+epithelial cell of proximal tubule,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+kidney distal convoluted tubule epithelial cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+renal principal cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+fibroblast,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+kidney loop of Henle epithelial cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+renal intercalated cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+neutrophil,0,0,0,0,0,1,0,0,0,0,0,0,0,1,1,1
+kidney resident macrophage,0,0,1,0,0,0,0,0,1,0,0,0,0,1,1,1
+glomerular visceral epithelial cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+Muller cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+retinal rod cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+retinal bipolar neuron,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+amacrine cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+retinal cone cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+blood vessel endothelial cell,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1
+retinal ganglion cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+retina horizontal cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+pericyte cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+astrocyte,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+microglial cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+luminal epithelial cell of mammary gland,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+basal cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+myoepithelial cell of mammary gland,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1
+mammary alveolar cell,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1

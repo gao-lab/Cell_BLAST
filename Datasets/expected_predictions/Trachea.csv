@@ -1,0 +1,45 @@
+,club cell,basal cell of epithelium of trachea,ciliated columnar cell of tracheobronchial tree,brush cell of trachea,lung neuroendocrine cell,tracheal goblet cell,ionocyte,unassigned,rejected,ambiguous
+club cell,1,0,0,0,0,0,0,0,0,0
+basal cell of epithelium of trachea,0,1,0,0,0,0,0,0,0,0
+ciliated columnar cell of tracheobronchial tree,0,0,1,0,0,0,0,0,0,0
+brush cell of trachea,0,0,0,1,0,0,0,0,0,0
+lung neuroendocrine cell,0,0,0,0,1,0,0,0,0,0
+tracheal goblet cell,0,0,0,0,0,1,0,0,0,0
+ionocyte,0,0,0,0,0,0,1,0,0,0
+type B pancreatic cell,0,0,0,0,0,0,0,1,1,1
+pancreatic ductal cell,0,0,0,0,0,0,0,1,1,1
+pancreatic D cell,0,0,0,0,0,0,0,1,1,1
+Schwann cell,0,0,0,0,0,0,0,1,1,1
+pancreatic stellate cell,0,0,0,0,0,0,0,1,1,1
+endothelial cell,0,0,0,0,0,0,0,1,1,1
+pancreatic PP cell,0,0,0,0,0,0,0,1,1,1
+pancreatic A cell,0,0,0,0,0,0,0,1,1,1
+macrophage,0,0,0,0,0,0,0,1,1,1
+leukocyte,0,0,0,0,0,0,0,1,1,1
+B cell,0,0,0,0,0,0,0,1,1,1
+T cell,0,0,0,0,0,0,0,1,1,1
+epithelial cell of proximal tubule,0,0,0,0,0,0,0,1,1,1
+kidney distal convoluted tubule epithelial cell,0,0,0,0,0,0,0,1,1,1
+renal principal cell,0,0,0,0,0,0,0,1,1,1
+fibroblast,0,0,0,0,0,0,0,1,1,1
+kidney loop of Henle epithelial cell,0,0,0,0,0,0,0,1,1,1
+renal intercalated cell,0,0,0,0,0,0,0,1,1,1
+neutrophil,0,0,0,0,0,0,0,1,1,1
+kidney resident macrophage,0,0,0,0,0,0,0,1,1,1
+natural killer cell,0,0,0,0,0,0,0,1,1,1
+glomerular visceral epithelial cell,0,0,0,0,0,0,0,1,1,1
+luminal epithelial cell of mammary gland,0,0,0,0,0,0,0,1,1,1
+basal cell,0,0,0,0,0,0,0,1,1,1
+myoepithelial cell of mammary gland,0,0,0,0,0,0,0,1,1,1
+mammary alveolar cell,0,0,0,0,0,0,0,1,1,1
+Muller cell,0,0,0,0,0,0,0,1,1,1
+retinal rod cell,0,0,0,0,0,0,0,1,1,1
+retinal bipolar neuron,0,0,0,0,0,0,0,1,1,1
+amacrine cell,0,0,0,0,0,0,0,1,1,1
+retinal cone cell,0,0,0,0,0,0,0,1,1,1
+blood vessel endothelial cell,0,0,0,0,0,0,0,1,1,1
+retinal ganglion cell,0,0,0,0,0,0,0,1,1,1
+retina horizontal cell,0,0,0,0,0,0,0,1,1,1
+pericyte cell,0,0,0,0,0,0,0,1,1,1
+astrocyte,0,0,0,0,0,0,0,1,1,1
+microglial cell,0,0,0,0,0,0,0,1,1,1

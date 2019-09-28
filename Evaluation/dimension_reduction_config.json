@@ -1,0 +1,45 @@
+{
+    "method": ["PCA", "ZIFA", "ZINB_WaVE", "Dhaka", "DCA", "scVI", "scScope", "Cell_BLAST"],
+    "Cell_BLAST": {
+        "n_cluster": 20
+    },
+    "dimensionality": [2, 5, 10, 20, 50],
+    "dataset": ["Muraro", "Adam", "Guo", "Plasschaert", "Baron_human", "Bach", "Macosko"],
+    "genes": "seurat_genes",
+    "label": "cell_ontology_class",
+    "nn": 0.01,
+    "seed": 16,
+    "timeout": "12h",
+    "plot_ext": "pdf",
+    "vis": "tSNE",
+    "Muraro": {
+        "psize": 1.5
+    },
+    "Adam": {
+        "psize": 1.5
+    },
+    "Guo": {
+        "psize": 1.5
+    },
+    "Plasschaert": {
+        "psize": 1.0
+    },
+    "Baron_human": {
+        "psize": 1.0
+    },
+    "Bach": {
+        "psize": 0.5
+    },
+    "Cao": {
+        "psize": 0.5
+    },
+    "Macosko": {
+        "psize": 0.5
+    },
+    "Quake_10x": {
+        "psize": 0.5
+    },
+    "Zeisel_2018": {
+        "psize": 0.5
+    }
+}

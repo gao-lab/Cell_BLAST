@@ -4,13 +4,9 @@
 # 9:18:48 AM
 
 suppressPackageStartupMessages({
-    library(Rcpp)
     library(Matrix)
     library(dplyr)
     library(rhdf5)
-    library(Seurat)
-    library(SingleCellExperiment)
-    library(scmap)
 })
 
 
@@ -77,7 +73,7 @@ read_expr_mat <- function(file) {
     if (H5Iget_type(exprs_handle) == "H5I_GROUP") {  # Sparse
         mat <- new(
             "dgCMatrix",
-            x = read_clean(h5read(exprs_handle, "data")),
+            x = as.double(read_clean(h5read(exprs_handle, "data"))),
             i = read_clean(h5read(exprs_handle, "indices")),
             p = read_clean(h5read(exprs_handle, "indptr")),
             Dim = rev(read_clean(h5read(exprs_handle, "shape")))
@@ -143,7 +139,7 @@ read_hybrid_path <- function(path) {
     path_split <- strsplit(path, "//")[[1]]
     filename <- path_split[[1]]
     h5_path <- path_split[[2]]
-    handle <- H5Oopen(H5Fopen(filename), h5_path)
+    handle <- H5Oopen(H5Fopen(filename, flags="H5F_ACC_RDONLY"), h5_path)
     if (H5Iget_type(handle) == "H5I_GROUP") {
         result <- list_from_group(handle)
     } else {  # "H5I_DATASET"
@@ -244,14 +240,16 @@ construct_dataset <- function(
 
     scmap_genes <- tryCatch(
         select_genes_scmap(dataset, save_dir, ... = ...),
-        error = function(e) {
+        error = function(err) {
+            print(paste("MY_ERROR:  ",err))
             message("Without selecting scmap genes")
             scmap_genes <- NULL
         }
     )
     seurat_genes <- tryCatch(
         select_genes_seurat(dataset, save_dir, ... = ...),
-        error = function(e) {
+        error = function(err) {
+            print(paste("MY_ERROR:  ",err))
             message("Without selecting seurat genes")
             message(geterrmessage())
             seurat_genes <- NULL
@@ -275,6 +273,10 @@ select_genes_scmap <- function(
     dataset, save_dir, grouping = NULL, min_group_frac = 0.5,
     n_features = 500, ...
 ) {
+    suppressPackageStartupMessages({
+        require(scmap)
+        require(SingleCellExperiment)
+    })
     dataset <- normalize(dataset)
     dataset_list <- list()
     if (is.null(grouping)) {
@@ -324,6 +326,9 @@ select_genes_seurat <- function(
     x_low = 0.1, x_high = 8, y_low = 1, y_high = NULL,
     binning = "equal_frequency", ...
 ) {
+    suppressPackageStartupMessages({
+        require(Seurat)
+    })
     if (is.null(x_high))
         x_high <- Inf
     if (is.null(x_low))
@@ -405,7 +410,7 @@ ExprDataSet <- setClass(
 
 read_dataset <- function(filename) {
 
-    f <- H5Fopen(filename)
+    f <- H5Fopen(filename, flags="H5F_ACC_RDONLY")
 
     obs_names <- as.vector(H5Dread(H5Dopen(f, "obs_names")))
     var_names <- as.vector(H5Dread(H5Dopen(f, "var_names")))
@@ -535,6 +540,9 @@ setMethod(
     "to_seurat",
     signature = signature(object = "ExprDataSet"),
     definition = function(object, var.genes = NULL) {
+        suppressPackageStartupMessages({
+            require(Seurat)
+        })
         so <- CreateSeuratObject(raw.data = object@exprs,
                                  meta.data = object@obs)
         if (!is.null(var.genes))

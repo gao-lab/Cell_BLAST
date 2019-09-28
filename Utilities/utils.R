@@ -1,13 +1,14 @@
 suppressPackageStartupMessages({
     library(scales)
     library(ggplot2)
+    library(extrafont)
 })
 
 
 # Shared style
 mod_style <- function(
     gp, rotate.x = FALSE, log.x = FALSE, log.y = FALSE,
-    axis.text.x.size = NULL
+    axis.text.x.size = NULL, font.family = "Arial", ...
 ) {
     if (log.x)
         gp <- gp + scale_x_log10(
@@ -20,14 +21,16 @@ mod_style <- function(
             labels = trans_format("log10", math_format(10 ^ .x))
         )
     args <- list(
+        text = element_text(family = font.family),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.line = element_line(colour = "black"),
-        axis.text.x = element_text(size=axis.text.x.size)
+        axis.text.x = element_text(size=axis.text.x.size),
+        ...
     )
     if (rotate.x)
-        args$axis.text.x = element_text(angle = 20, vjust = 0.6)
+        args$axis.text.x <- element_text(angle = 20, vjust = 0.6)
     gp <- gp + do.call(theme, args)
     gp
 }

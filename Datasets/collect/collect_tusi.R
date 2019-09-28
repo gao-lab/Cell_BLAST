@@ -7,7 +7,7 @@ suppressPackageStartupMessages({
 source("../../Utilities/data.R", chdir = TRUE)
 
 message("Reading data...")
-data <- read.csv("../download/Tusi/GSM2388072_basal_bone_marrow.raw_umifm_counts.csv.gz")
+data <- read.csv("../download/Tusi/GSM2388072_basal_bone_marrow.raw_umifm_counts.csv.gz", check.names = FALSE)
 expr_mat <- as.matrix(data[, 6:ncol(data)])
 rownames(expr_mat) <- data$cell_id
 meta_df <- data[, 1:6] %>% filter(pass_filter == 1) %>% select(

@@ -1,0 +1,39 @@
+cell_type1,cell_ontology_class,cell_ontology_id,remark,study
+Cardiac muscle lineages,cardiac muscle cell,CL:0000746,exact,Cao_2019
+Cholinergic neurons,cholinergic neuron,CL:0000108,exact,Cao_2019
+Chondroctye progenitors,chondrocyte,CL:0000138,exact,Cao_2019
+Chondrocytes & osteoblasts,,,,Cao_2019
+Connective tissue progenitors,connective tissue cell,CL:0002320,exact,Cao_2019
+Definitive erythroid lineage,erythroid lineage cell,CL:0000764,exact,Cao_2019
+Early mesenchyme,mesenchymal cell,CL:0008019,exact,Cao_2019
+Endothelial cells,endothelial cell,CL:0000115,exact,Cao_2019
+Ependymal cell,ependymal cell,CL:0000065,exact,Cao_2019
+Epithelial cells,epithelial cell,CL:0000066,exact,Cao_2019
+Excitatory neurons,neuron,CL:0000540,exact,Cao_2019
+Granule neurons,neuron,CL:0000540,exact,Cao_2019
+Hepatocytes,hepatocyte,CL:0000182,exact,Cao_2019
+Inhibitory interneurons,inhibitory interneuron,CL:0000498,exact,Cao_2019
+Inhibitory neuron progenitors,neuroblast,CL:0000031,exact,Cao_2019
+Inhibitory neurons,neuron,CL:0000540,exact,Cao_2019
+Intermediate Mesoderm,mesodermal cell,CL:0000222,exact,Cao_2019
+Isthmic organizer cells,,,,Cao_2019
+Jaw and tooth progenitors,,,,Cao_2019
+Lens,vertebrate lens cell,CL:0002222,exact,Cao_2019
+Limb mesenchyme,mesenchymal cell,CL:0008019,exact,Cao_2019
+Megakaryocytes,megakaryocyte,CL:0000556,exact,Cao_2019
+Melanocytes,melanocyte,CL:0000148,exact,Cao_2019
+Myocytes,smooth muscle cell,CL:0000192,exact,Cao_2019
+Neural Tube,,,embryonic precursor to the central nervous system,Cao_2019
+Neural progenitor cells,neuroblast,CL:0000031,exact,Cao_2019
+Neutrophils,neutrophil,CL:0000775,exact,Cao_2019
+Notochord cells, notochordal cell,CL:0007005,exact,Cao_2019
+Oligodendrocyte Progenitors,oligodendrocyte,CL:0000128,exact,Cao_2019
+Osteoblasts,osteoblast,CL:0000062,exact,Cao_2019
+Postmitotic premature neurons,neuron,CL:0000540,exact,Cao_2019
+Premature oligodendrocyte,oligodendrocyte,CL:0000128,exact,Cao_2019
+Primitive erythroid lineage,primitive erythroid lineage cell,CL:0002417,exact,Cao_2019
+Radial glia,radial glial cell,CL:0000681,exact,Cao_2019
+Schwann cell precursor,Schwann cell precursor,CL:0002375,exact,Cao_2019
+Sensory neurons,sensory neuron,CL:0000101,exact,Cao_2019
+Stromal cells,stromal cell,CL:0000499,exact,Cao_2019
+White blood cells,leukocyte,CL:0000738,exact,Cao_2019

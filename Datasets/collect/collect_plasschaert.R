@@ -11,14 +11,15 @@ meta_df <- read.table(
     "../download/Plasschaert/GSE102580_meta_filtered_counts_mouse.tsv.gz",
     header = TRUE, sep = "\t", row.names = 1
 )
+meta_df <- meta_df[!is.na(meta_df$x_Fig1c), ]
 
 files <- list.files("../download/Plasschaert")
-files <- files[grepl('mouse_id', files)]
+files <- files[grepl("[uU]ninjured_mouse_id", files)]
 raw_data_files <- list()
 colnames_sanity <- NULL
 for (file in files) {
     expr_mat <- read.table(
-        file.path("../download/Plasschaert", file), header = TRUE)
+        file.path("../download/Plasschaert", file), header = TRUE, check.names = FALSE)
     expr_mat$raw_data_file <- rep(paste(
         strsplit(file, "_")[[1]][-1], collapse = "_"
     ), nrow(expr_mat))
@@ -46,21 +47,22 @@ colnames(new_meta_df) <- c(
     "library", "donor", "disease", "umi_count", "mito",
     "cell_type1", "cell_type2"
 )
-new_meta_df$organism <- "Mus musculus"
-new_meta_df$organ <- "Trachea"
-new_meta_df$platform <- "inDrop"
-new_meta_df$dataset_name <- "Plasschaert"
 
 rownames(new_meta_df) <- as.character(1:nrow(new_meta_df))
 rownames(new_expr_mat) <- as.character(1:nrow(new_expr_mat))
 
-mask <- new_meta_df$cell_type1 != ""
 cell_ontology <- read.csv("../cell_ontology/trachea_cell_ontology.csv")
 
 # datasets_meta
 datasets_meta <- read.csv("../ACA_datasets.csv", header = TRUE, row.names = 1)
 
 construct_dataset("../data/Plasschaert",
+    t(as.matrix(new_expr_mat)), new_meta_df,
+    datasets_meta = datasets_meta, cell_ontology = cell_ontology
+)
+
+mask <- new_meta_df$cell_type1 != "Ionocytes"
+construct_dataset("../data/Plasschaert_noi",
     t(as.matrix(new_expr_mat[mask, ])), new_meta_df[mask, ],
     datasets_meta = datasets_meta, cell_ontology = cell_ontology
 )

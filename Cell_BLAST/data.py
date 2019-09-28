@@ -25,43 +25,47 @@ class ExprDataSet(object):
 
     """
     Main data class, which is based on the data structure of ``AnnData``.
-    Note that in this package we restrict to scRNA-seq data, so the stored
-    matrix is always the expression matrix, and the terms "obs" and "var" are
-    used interchangeably with "cell" and "gene".
+    Note that the data is always assumed to be scRNA-seq, so the stored
+    matrix is always the expression matrix. The ``obs`` slot stores meta
+    information of cells, and the ``var`` slot stores meta information of genes.
+    The ``uns`` slot stores other unstructure data, e.g. list of most
+    informative genes, etc.
 
     Parameters
     ----------
     exprs : numpy.ndarray, scipy.sparse.spmatrix
-        A :math:`obs \\times var` expression matrix in the form of
-        either numpy array or scipy sparse matrix.
+        An :math:`obs \\times var` expression matrix in the form of
+        either a numpy array or a scipy sparse matrix.
     obs : pandas.DataFrame
-        Cell meta table, each row corresponding to a row in ``exprs``.
+        Cell meta table. Each row corresponds to a row in ``exprs``.
     var : pandas.DataFrame
-        Gene meta table, each row corresponding to a column in ``exprs``.
+        Gene meta table. Each row corresponds to a column in ``exprs``.
     uns : dict
-        Unstructured meta information, e.g. list of highly variable genes.
-        Values should be numpy arrays if they are to be saved to file.
+        Unstructured meta information, e.g. list of most informative genes.
 
     Examples
     --------
 
     An ``ExprDataSet`` object can be constructed from an expression matrix, an
-    observation(cell) meta table, a variable(gene) meta table, and some
+    observation (cell) meta table, a variable (gene) meta table, and some
     unstructured data:
 
     >>> data_obj = Cell_BLAST.data.ExprDataSet(exprs, obs, var, uns)
 
-    If you have an ``AnnData`` object, you can directly convert it
-    to an ``ExprDataSet`` object:
+    Or, if you have an ``AnnData`` object or a `LoomConnection` object
+    (to a loom file), you can directly convert them to an ``ExprDataSet``
+    object using the following methods:
 
     >>> data_obj = Cell_BLAST.data.ExprDataSet.from_anndata(anndata_obj)
+    >>> data_obj = Cell_BLAST.data.ExprDataSet.from_loom(loomconnection_obj)
 
-    It's also possible in the opposite direction:
+    It's also possible to convert in the opposite direction:
 
     >>> anndata_obj = data_obj.to_anndata()
+    >>> loomconnection = data_obj.to_loom(filename)
 
     ``ExprDataSet`` objects support many forms of slicing, including
-    python slicing, obs/var name matching, numeric indexing and boolean mask:
+    numeric range, numeric index, boolean mask, and obs/var name selection:
 
     >>> subdata_obj = data_obj[0:10, np.arange(10)]
     >>> subdata_obj = data_obj[
@@ -69,16 +73,16 @@ class ExprDataSet(object):
     ...     ["gene_1", "gene_2"]
     ... ]
 
-    Note that for variable name matching, if a variable does not exist in the
+    Note that in variable name selection, if a variable does not exist in the
     original dataset, it will be filled with zeros in the returned dataset,
     with a warning message.
 
-    They also support easy saving and loading:
+    ``ExprDataSet`` objects also support saving and loading:
 
-    >>> data_obj.save("data.h5")
-    >>> data_obj = Cell_BLAST.data.ExprDataSet.load("data.h5")
+    >>> data_obj.write_dataset("data.h5")
+    >>> data_obj = Cell_BLAST.data.ExprDataSet.read_dataset("data.h5")
 
-    Some utilities used in the Cell_BLAST/DIRECTi pipeline are also supported,
+    Some other utilities used in the Cell_BLAST pipeline are also supported,
     including but not limited to:
 
     Dataset merging
@@ -92,21 +96,16 @@ class ExprDataSet(object):
     Data visualization
 
     >>> data_obj.latent = latent_matrix
-    >>> _ = data_obj.visualize_latent("cell_type")
-    >>> _ = data_obj.violin("cell_type", "gene_name")
-    >>> _ = data_obj.obs_correlation_heatmap()
+    >>> ax = data_obj.visualize_latent("cell_type")
+    >>> ax = data_obj.violin("cell_type", "gene_name")
+    >>> ax = data_obj.obs_correlation_heatmap()
 
     Find markers:
 
     >>> marker_dict = data_obj.fast_markers("cell_type")
-
-    Computation of annotation confidence
-
-    >>> confidence = data_obj.annotation_confidence("cell_type")
     """
 
     def __init__(self, exprs, obs, var, uns):
-        # TODO: uns slots that are not numpy arrays may have trouble saving
         assert exprs.shape[0] == obs.shape[0] and exprs.shape[1] == var.shape[0]
         if scipy.sparse.issparse(exprs):
             self.exprs = exprs.tocsr()
@@ -114,12 +113,12 @@ class ExprDataSet(object):
             self.exprs = exprs
         self.obs = obs
         self.var = var
-        self.uns = utils.dotdict(uns)
+        self.uns = uns
 
     @property
     def X(self):  # For compatibility with `AnnData`
         """
-        :math:`obs \\times var` matrix, same as ``exprs``
+        :math:`obs \\times var` expression matrix, same as ``exprs``
         """
         return self.exprs
 
@@ -157,11 +156,14 @@ class ExprDataSet(object):
     @property
     def latent(self):
         """
-        Latent space coordinate
+        Latent space coordinate. Must have the same number of observations
+        (cells) as the expression data.
         """
         mask = np.vectorize(lambda x: x.startswith("latent_"))(self.obs.columns)
         if np.any(mask):
-            return self.obs.loc[:, mask].values
+            return self.obs.loc[:, np.vectorize(lambda x: "latent_%d" % x)(
+                np.arange(mask.sum()) + 1
+            )].values
         else:
             raise ValueError("No latent has been registered!")
 
@@ -183,9 +185,9 @@ class ExprDataSet(object):
 
     def normalize(self, target=10000):
         """
-        Obs-wise (cell-wise) normalization if the matrix.
+        Obs-wise (cell-wise) normalization if the expression matrix.
         Note that only the matrix gets copied in the returned dataset, but meta
-        tables are only references to the original dataset.
+        tables are not (only references to meta tables in the original dataset).
 
         Parameters
         ----------
@@ -206,7 +208,7 @@ class ExprDataSet(object):
 
     def __getitem__(self, slices):
         """
-        Support 2-d slicing by integer index, boolean mask and also name,
+        2-d slicing by numeric range, numeric index, boolean mask and obs/var names.
         """
         if len(slices) == 2:
             obs_slice, var_slice = slices
@@ -289,15 +291,12 @@ class ExprDataSet(object):
             exprs = exprs[extract_idx, :]
             obs = self.obs.reindex(obs_slice)
 
-        return ExprDataSet(
-            exprs=exprs.copy(), obs=obs, var=var,
-            uns=copy.deepcopy(dict(self.uns))
-        )
+        return ExprDataSet(exprs=exprs, obs=obs, var=var, uns=self.uns)
 
     def clean_duplicate_vars(self):
         """
-        Clean variables to preserve only the first occurrence of
-        duplicated variables
+        Clean up variables to preserve only the first occurrence of
+        duplicated variables.
 
         Returns
         -------
@@ -315,14 +314,14 @@ class ExprDataSet(object):
 
     def get_meta_or_var(self, names, normalize_var=False, log_var=False):
         """
-        Get either meta information (column names in ``obs``) or
-        variable values (row names in ``var``).
+        Get either cell meta information (specified by column names in
+        the ``obs`` table) or gene expression values in the expression matrix
+        (specified by gene names).
 
         Parameters
         ----------
         names : list
-            List of names that specifies meta information / variables
-            to be fetched.
+            List of names that specifies meta information / genes to be fetched.
         normalize_var : bool
             Whether to do cell-normalization before fetching variable values,
             by default False.
@@ -366,7 +365,7 @@ class ExprDataSet(object):
         if deep:
             return ExprDataSet(
                 self.exprs.copy(), self.obs.copy(), self.var.copy(),
-                copy.deepcopy(dict(self.uns))  # dotdict can't be deep copied
+                copy.deepcopy(self.uns)
             )
         return ExprDataSet(self.exprs, self.obs, self.var, self.uns)
 
@@ -407,12 +406,12 @@ class ExprDataSet(object):
         filename : str
             File to read from (content in hdf5 format).
         sparsify : bool
-            Whether to convert the expression matrix into sparse format,
+            Whether to coerce the expression matrix into sparse format,
             by default False.
         skip_exprs : bool
-            Whether to skip reading the expression matrix and use all zeros,
-            by default False. This option is provided to accelerate data
-            reading if only meta information are needed.
+            Whether to skip reading the expression matrix (fill with all
+            zeros instead), by default False. This option is for accelerating
+            data reading in case if only the meta information are needed.
 
         Returns
         -------
@@ -449,7 +448,7 @@ class ExprDataSet(object):
     def map_vars(self, mapping, map_uns_slots=None, verbose=1):
         """
         Map variables of the dataset to some other terms,
-        e.g. gene ortholog groups.
+        e.g. gene ortholog groups, or orthologous genes in another species.
 
         Parameters
         ----------
@@ -457,16 +456,16 @@ class ExprDataSet(object):
             A 2-column data frame defining variable name mapping. First column
             is source variable name and second column is target variable name.
         map_uns_slots : list
-            Assuming variable subsets, e.g. Seurat variable genes,
+            Assuming variable subsets, e.g. most informative genes,
             are stored in the ``uns`` slot, this parameter specifies which slots
             in ``uns`` should also be mapped, by default None.
-            Note that ``uns`` slots not included will be left as is.
+            Note that ``uns`` slots not specified here will be left as is.
         verbose : {0, 1, 2}
             If ``verbose=0``, no warning message will be printed.
             If ``verbose=1``, the number of source/target items that are
             ambiguously mapped will be reported.
-            If ``verbose=2``, a list of such ambiguous vars will be reported.
-            Default value is 1.
+            If ``verbose=2``, a list of such ambiguous items will be reported.
+            Default verbosity level is 1.
 
         Returns
         -------
@@ -528,7 +527,7 @@ class ExprDataSet(object):
     def merge_datasets(cls, dataset_dict, meta_col=None,
                        merge_uns_slots=None, verbose=1):
         """
-        Merge multiple dataset objects into a meta dataset.
+        Merge multiple dataset objects into a single "meta-dataset".
 
         Parameters
         ----------
@@ -536,19 +535,20 @@ class ExprDataSet(object):
             A dict of ExprDataSet objects. Dict keys will be used as values in
             ``meta_col`` (see ``meta_col``).
         meta_col : str
-            Name of the new column to be added in ``obs`` slot of the merged
-            ExprDataSet object, used for distinguishing each dataset,
-            by default None, meaning that no such column will be added.
+            Name of a new column to be added to ``obs`` table of the merged
+            ExprDataSet object, which can be used for distinguishing cells from
+            each dataset, by default None, meaning that no such column
+            will be added.
         merge_uns_slots : list
-            Assuming variable subsets, e.g. Seurat variable genes, are stored
-            in the ``uns`` slot, this parameter specifies variable subsets to be
-            merged, by default None.
-            Note that uns slots not specified will be discarded.
+            Assuming variable subsets, e.g. most informative genes,
+            are stored in the ``uns`` slot, this parameter specifies the
+            variable subsets to be merged, by default None.
+            Note that ``uns`` slots not specified here will be discarded.
         verbose : {0, 1, 2}
             If ``verbose=0``, no warning message will be printed.
-            If ``verbose=1``, the number of vars in the var union that's
+            If ``verbose=1``, the number of genes in the gene union that's
             missing in each dataset will be reported.
-            If ``verbose=2``, a list of such missing vars in each dataset
+            If ``verbose=2``, a list of such missing genes in each dataset
             will be reported.
 
         Returns
@@ -650,7 +650,7 @@ class ExprDataSet(object):
             message.info("Using cached %s..." % method)
 
     def visualize_latent(
-        self, hue=None, method="tSNE", reuse=True, shuffle=True, sort=False,
+        self, hue=None, style=None, method="tSNE", reuse=True, shuffle=True, sort=False,
         ascending=True, size=3, width=7, height=7,
         random_seed=config._USE_GLOBAL, ax=None,
         dr_kws=None, scatter_kws=None
@@ -661,23 +661,23 @@ class ExprDataSet(object):
         Parameters
         ----------
         hue : str
-            Specify a column in the ``obs`` slot or a row in the ``var`` slot
-            to use as color, by default None.
+            Specifies a column in the ``obs`` table or a gene name to use as
+            hue of the data points, by default None.
         method : {"tSNE", "UMAP", None}
-            Specify the dimension reduction algorithm for visualization,
+            Specifies the dimension reduction algorithm for visualization,
             by default "tSNE". If ``None`` is specified, the first two latent
             dimensions will be used for visualization.
         reuse : bool
             Whether to reuse existing visualization coordinates,
             by default True.
         shuffle : bool
-            Whether to shuffle point before plotting, by default True.
+            Whether to shuffle data points before plotting, by default True.
         sort : bool
-            Whether to sort points according to ``color`` before plotting,
+            Whether to sort points according to ``hue`` before plotting,
             by default False. If set to true, ``shuffle`` takes no effect.
         ascending : bool
-            Whether sorting is ascending, by default True. Only effective when
-            ``sort`` is set to true.
+            Whether sorting is in the ascending order, by default True.
+            Only effective when ``sort`` is set to true.
         size : int
             Point size, by default 3.
         width : float
@@ -689,11 +689,11 @@ class ExprDataSet(object):
             ``Cell_BLAST.config.RANDOM_SEED`` will be used, which defaults
             to None.
         ax : matplotlib.axes.Axes
-            Specify an existing axes to plot onto, by default None.
+            Specifies an existing axes to plot onto, by default None.
             If specified, ``width`` and ``height`` take no effect.
         dr_kws: dict
-            Keyword arguments to be passed to the dimension reduction
-            algorithm, according to ``method``.
+            Keyword arguments passed to the dimension reduction algorithm,
+            according to ``method``.
             If ``method`` is "tSNE", will be passed to ``sklearn.manifold.TSNE``.
             If ``method`` is "UMAP", will be passed to ``umap.UMAP``.
         scatter_kws : dict
@@ -726,6 +726,8 @@ class ExprDataSet(object):
         fetch = ["%s1" % method, "%s2" % method]
         if hue is not None:
             fetch.append(hue)
+        if style is not None:
+            fetch.append(style)
         df = self.get_meta_or_var(fetch, normalize_var=True, log_var=True)
         if shuffle:
             df = df.sample(frac=1, random_state=random_seed)
@@ -733,7 +735,7 @@ class ExprDataSet(object):
             df = df.sort_values(hue, ascending=ascending)
         ax = sns.scatterplot(
             x="%s1" % method, y="%s2" % method,
-            hue=hue, s=size, data=df, edgecolor=None, ax=ax,
+            hue=hue, style=style, s=size, data=df, edgecolor=None, ax=ax,
             **scatter_kws
         )
         ax.spines["right"].set_visible(False)
@@ -757,10 +759,10 @@ class ExprDataSet(object):
         Parameters
         ----------
         group : str
-            Specify a column in ``obs`` which will be used to color rows and
-            columns, by default None.
+            Specifies a column in the ``obs`` table which will be used to label
+            rows and columns, by default None.
         used_vars : array_like
-            Specify variables used to compute correlation, by default None,
+            Specifies variables used to compute correlation, by default None,
             meaning all variables will be used.
         cluster_method : str
             Clustering method, by default "complete". See
@@ -823,24 +825,22 @@ class ExprDataSet(object):
         Parameters
         ----------
         group : str
-            Specify a column in ``obs`` that provides obs grouping.
+            Specifies a column in the ``obs`` table used for cell grouping.
         var : str
             Variable name.
         normalize_var : bool
-            Whether to perform obs normalization, by default True.
+            Whether to perform cell normalization, by default True.
         width : float
             Figure width, by default 10.
         height : float
             Figure height, by default 10.
         ax : matplotlib.axes.Axes
-            Specify an existing axes to plot onto, by default None.
+            Specifies an existing axes to plot onto, by default None.
             If specified, ``width`` and ``height`` take no effect.
         strip_kws : dict
-            Additional keyword arguments will be passed to
-            ``seaborn.stripplot``.
+            Additional keyword arguments will be passed to ``seaborn.stripplot``.
         violin_kws : dict
-            Additional keyword arguments will be passed to
-            ``seaborn.violinplot``.
+            Additional keyword arguments will be passed to ``seaborn.violinplot``.
 
         Returns
         -------
@@ -876,7 +876,7 @@ class ExprDataSet(object):
         return_group_percentile=True
     ):
         """
-        Compute annotation confidence of each obs based on
+        Compute annotation confidence of each obs (cell) based on
         sample silhouette score.
 
         Parameters
@@ -938,12 +938,12 @@ class ExprDataSet(object):
         """
         Find markers for each group by one-vs-rest Wilcoxon rank sum test.
         This is a fast implementation of the ``FindAllMarkers`` function
-        in Seurat 2.
+        in Seurat v2.
 
         Parameters
         ----------
         group : str
-            Specify a column in ``obs`` that determines cell grouping.
+            Specifies a column in ``obs`` that determines cell grouping.
         used_genes : array_like
             A sequence of genes in which to search for markers.
         alternative : {"two-sided", "greater", "less"}
@@ -999,7 +999,7 @@ class ExprDataSet(object):
         def ranksum_thread(vec):
             """
             Wilcoxon rank sum test for one feature
-            Adapted from the following R functions:
+            Adapted from R functions:
                 `Seurat::FindMarkers` and `stats::wilcox.test`
             """
 
@@ -1124,7 +1124,7 @@ class ExprDataSet(object):
         """
         import anndata
         return anndata.AnnData(
-            X=self.exprs, obs=self.obs, var=self.var, uns=self.uns)
+            X=self.exprs, obs=self.obs, var=self.var, uns=dict(self.uns))
 
     @classmethod
     def from_anndata(cls, ad):
@@ -1153,7 +1153,7 @@ class ExprDataSet(object):
         Parameters
         ----------
         file : str
-            Specify the loom file to be written
+            Specifies the loom file to be written
 
         Returns
         -------
@@ -1203,7 +1203,10 @@ class ExprDataSet(object):
 
     def write_table(self, filename, orientation="cg", **kwargs):
         """
-        Write expression matrix to a text based table file
+        Write the expression matrix to a plain-text file.
+        Note that ``obs`` (cell) meta table, ``var`` (gene) meta table and data
+        in the ``uns`` slot are discarded, only the expression matrix is written
+        to the file.
 
         Parameters
         ----------
@@ -1237,7 +1240,7 @@ class ExprDataSet(object):
     @classmethod
     def read_table(cls, filename, orientation="cg", sparsify=False, **kwargs):
         """
-        Read expression matrix from a text based table file
+        Read expression matrix from a plain-text file
 
         Parameters
         ----------
@@ -1286,7 +1289,8 @@ def write_clean(data):
 
 def dict_from_group(group):
     assert isinstance(group, h5py.Group)
-    d = utils.dotdict()
+    # d = utils.dotdict()
+    d = {}
     for key in group:
         if isinstance(group[key], h5py.Group):
             value = dict_from_group(group[key])
@@ -1301,11 +1305,14 @@ def dict_to_group(d, group):
         if isinstance(d[key], dict):
             dict_to_group(d[key], group.create_group(key))
         else:
-            value = write_clean(d[key])
-            if value.size == 1:
-                group.create_dataset(key, data=value)
-            else:
-                group.create_dataset(key, data=value, **config.H5OPTS)
+            try:
+                value = write_clean(d[key])
+                if value.size == 1:
+                    group.create_dataset(key, data=value)
+                else:
+                    group.create_dataset(key, data=value, **config.H5OPTS)
+            except Exception:
+                message.warning("Slot %s failed to save!" % key)
 
 
 def df_to_dict(df):

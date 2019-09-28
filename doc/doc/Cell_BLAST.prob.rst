@@ -9,5 +9,6 @@ Module: ``Cell_BLAST.prob``
 
    Cell_BLAST.prob.NB
    Cell_BLAST.prob.ZINB
-   Cell_BLAST.prob.ZIG
+   Cell_BLAST.prob.LN
+   Cell_BLAST.prob.ZILN
    Cell_BLAST.prob.MSE

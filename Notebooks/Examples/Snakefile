@@ -1,0 +1,45 @@
+nbconvert = \
+    "jupyter nbconvert --to html --ExecutePreprocessor.timeout=3600000 --allow-errors " \
+    "--execute {input.ipynb} --output {output} > {log} 2>&1"
+
+rule all:
+    input:
+        "DIRECTi.html",
+        "BLAST.html"
+    output:
+        ".examples_timestamp"
+    shell:
+        "touch {output}"
+
+rule directi:
+    input:
+        "../../Datasets/data/Baron_human/data.h5",
+        "../../Datasets/data/Segerstolpe/data.h5",
+        "../../Datasets/data/Muraro/data.h5",
+        "../../Datasets/data/Xin_2016/data.h5",
+        "../../Datasets/data/Lawlor/data.h5",
+        ipynb="DIRECTi.ipynb"
+    output:
+        "DIRECTi.html"
+    log:
+        "DIRECTi.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule blast:
+    input:
+        "../../Datasets/data/Baron_human/data.h5",
+        "../../Datasets/data/Lawlor/data.h5",
+        ipynb="BLAST.ipynb"
+    output:
+        "BLAST.html"
+    log:
+        "BLAST.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert

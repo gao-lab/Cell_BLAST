@@ -3,6 +3,8 @@ Miscellaneous utility functions and classes
 """
 
 
+import os
+import binascii
 import json
 import functools
 import operator
@@ -11,6 +13,10 @@ import igraph
 import numpy as np
 import scipy.sparse
 import tqdm
+
+
+def rand_hex():
+    return binascii.b2a_hex(os.urandom(15)).decode()
 
 
 class dotdict(dict):
@@ -260,7 +266,10 @@ class CellTypeDAG(object):
         self.graph.vs["count"] = 0
 
     def count_set(self, name, count):
-        self.get_vertex(name)["raw_count"] = count
+        try:
+            self.get_vertex(name)["raw_count"] = count
+        except KeyError:
+            print("Unknown node name! Doing nothing.")
 
     def count_update(self):
         origins = [v for v in self.graph.vs.select(raw_count_gt=0)]

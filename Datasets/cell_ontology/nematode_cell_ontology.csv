@@ -3,7 +3,7 @@ Unclassified neurons,neuron,CL:0000540,exact,Cao
 Germline,germ line cell,CL:0000039,exact,Cao
 Intestinal/rectal muscle,visceral muscle cell,CL:0008007,exact,Cao
 Coelomocytes,coelomocyte,CL:0000421,exact,Cao
-Ciliated sensory neurons,ciliated sensory neuron,CL:2000100,exact,Cao
+Ciliated sensory neurons,ciliated olfactory receptor neuron,CL:0000847,exact,Cao
 Seam cells,seam cell,CL:0000419,exact,Cao
 Non-seam hypodermis,epidermal cell,CL:0000362,larger than actual,Cao
 Pharyngeal epithelia,nasopharyngeal epithelial cell,CL:1001573,larger than actual,Cao
