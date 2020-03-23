@@ -64,9 +64,9 @@ for (this_method in unique(df$method)) {
             type = "linear"
         )
 
-        this_fit <- rotated.spline(
+        this_fit <- roc.smooth(
             this_df[, c("neg_mba", "pos_mba")],
-            angle = -pi / 4, spar = 0.15, nknots = 6
+            angle = - pi / 4, spar = 0.52, nknots = 9
         )
         this_fit$method <- this_method
         this_fit$group <- this_group
@@ -145,7 +145,7 @@ gp <- ggplot(data = df_auc, mapping = aes(
 ) + scale_y_continuous(
     name = "AUC"
 )
-ggsave(snakemake@output[["auc"]], mod_style(gp), width = 4.5, height = 3.5)
+ggsave(snakemake@output[["auc"]], mod_style(gp, rotate.x = TRUE), width = 4.5, height = 3.5)
 
 # Average MBA at different cutoffs
 gp <- ggplot(data = df %>% mutate(
@@ -252,9 +252,9 @@ gp <- ggplot(df_default_melted, aes(
     alpha = 0.2, position = position_dodge(0.85), width = 0.7,
     outlier.shape = NA
 ) + scale_x_discrete(
-    name = "Mean balanced accuracy"
+    name = "Group of query cell types"
 ) + scale_y_continuous(
-    name = "Value"
+    name = "Mean balanced accuracy"
 ) + scale_shape_manual(
     name = "Dataset group", values = c(15, 16, 17, 18)
 ) + scale_color_manual(

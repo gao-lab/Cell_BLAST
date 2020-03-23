@@ -13,7 +13,14 @@ rule batch_removal:
             vis=config["vis"],
             label=[config["label"], config["batch"]],
             ext=config["plot_ext"]
-        ) if "Cell_BLAST" in config["method"] else [],
+        ) if "Cell_BLAST" in config["latent_space_method"] else [],
+        expand(
+            "../Results/scVI/{dataset}/dim_5_rmbatchNA/seed_0/{vis}.{label}.{ext}",
+            dataset=config["dataset"],
+            vis=config["vis"],
+            label=[config["label"], config["batch"]],
+            ext=config["plot_ext"]
+        ) if "scVI" in config["latent_space_method"] else [],
         "../Results/batch_removal_composition.xlsx"
     output:
         "../Results/.batch_removal_timestamp"
@@ -38,6 +45,7 @@ rule batch_removal_plot:
         script="batch_removal_plot.R"
     output:
         twoway="../Results/batch_removal_2way.{ext}".format(ext=config["plot_ext"]),
+        cb_elbow="../Results/batch_removal_cb_elbow.{ext}".format(ext=config["plot_ext"]),
         twowayopt="../Results/batch_removal_2wayopt.{ext}".format(ext=config["plot_ext"]),
         map="../Results/batch_removal_map.{ext}".format(ext=config["plot_ext"]),
         sas="../Results/batch_removal_sas.{ext}".format(ext=config["plot_ext"])
@@ -54,11 +62,11 @@ rule batch_removal_summary:
                 dimensionality=dimensionality,
                 rmbatch="NA" if lambda_rmbatch_reg is None else lambda_rmbatch_reg,
                 seed=seed
-            ) for method in config["method"]
+            ) for method in config["gene_space_method"] + config["latent_space_method"]
               for dataset in config["dataset"]
               for dimensionality in config[method]["dimensionality"]
               for lambda_rmbatch_reg in config[method]["lambda_rmbatch_reg"]
-              for seed in range(config["seed"])
+              for seed in (range(config[method]["seed"]) if isinstance(config[method]["seed"], int) else config[method]["seed"])
         ] if not os.path.exists("{path}/.blacklist".format(path=item))]
     output:
         "../Results/batch_removal.csv"
@@ -71,9 +79,15 @@ rule batch_removal_summary:
 rule batch_removal_metrics:
     input:
         data="../Datasets/data/{dataset}/data.h5",
-        result="../Results/{method}/{dataset}/dim_{dimensionality}_rmbatch{rmbatch}/seed_{seed}/result.h5"
+        result=lambda wildcards: "../Results/{method}/{dataset}/dim_{dimensionality}_rmbatch{rmbatch}/seed_{seed}/{filename}.h5".format(
+            method=wildcards.method, dataset=wildcards.dataset,
+            dimensionality=wildcards.dimensionality, rmbatch=wildcards.rmbatch, seed=wildcards.seed,
+            filename="corrected" if wildcards.method in config["gene_space_method"] else "result"
+        )
     output:
         "../Results/{method}/{dataset,.+\+.+}/dim_{dimensionality}_rmbatch{rmbatch}/seed_{seed}/metrics.json"
+    params:
+        slot=lambda wildcards: "exprs" if wildcards.method in config["gene_space_method"] else "latent"
     threads: 1
     script:
         "batch_removal_metrics.py"
@@ -85,7 +99,7 @@ rule merge_datasets:
             item=wildcards.merged.split("+")
         )
     output:
-        "../Datasets/data/{merged}/data.h5"
+        "../Datasets/data/{merged,.+\+.+}/data.h5"
     params:
         merge_uns_slots=["seurat_genes", "scmap_genes"],
         mapping=lambda wildcards: config[wildcards.merged]["merge_mapping"] \

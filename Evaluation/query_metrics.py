@@ -28,9 +28,9 @@ def parse_args():
         true=cmd_args.true,
         pred=cmd_args.pred
     )
-    cmd_args.config = argparse.Namespace(label=cmd_args.label)
+    cmd_args.config = {"label": cmd_args.label}
     cmd_args.params = argparse.Namespace(expect=cmd_args.expect)
-    del cmd_args.red, cmd_args.true, cmd_args.pred, cmd_args.label, \
+    del cmd_args.ref, cmd_args.true, cmd_args.pred, cmd_args.label, \
         cmd_args.expect, cmd_args.cell_type_specific
     return cmd_args
 

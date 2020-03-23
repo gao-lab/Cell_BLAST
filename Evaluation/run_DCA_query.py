@@ -43,7 +43,7 @@ def parse_args():
 
 def main(cmd_args):
 
-    cb.message.info("Reading data...")
+    print("Reading data...")
     genes = np.loadtxt(os.path.join(cmd_args.model, "genes.txt"), dtype=np.str)
     ref = cb.data.ExprDataSet.read_dataset(cmd_args.ref)
     ref = utils.clean_dataset(
@@ -57,19 +57,19 @@ def main(cmd_args):
         ref, genes, filter_min_counts=False, size_factors=10000,
         normalize_input=False, logtrans_input=True
     )
-    cb.message.info("Loading model...")
+    print("Loading model...")
     os.environ["CUDA_VISIBLE_DEVICES"] = utils.pick_gpu_lowest_memory() \
         if cmd_args.device is None else cmd_args.device
     model = keras.models.load_model(os.path.join(cmd_args.model, "model.h5"))
 
-    cb.message.info("Projecting to latent space...")
+    print("Projecting to latent space...")
     ref_latent = model.predict({
         "count": ref.X,
         "size_factors": ref.obs.size_factors
     })
     nn = sklearn.neighbors.NearestNeighbors().fit(ref_latent)
 
-    cb.message.info("Building empirical distribution...")
+    print("Building empirical distribution...")
     np.random.seed(cmd_args.seed)
     idx1 = np.random.choice(ref_latent.shape[0], size=N_EMPIRICAL)
     idx2 = np.random.choice(ref_latent.shape[0], size=N_EMPIRICAL)
@@ -77,7 +77,7 @@ def main(cmd_args):
         ref_latent[idx1] - ref_latent[idx2]
     ), axis=1)))
 
-    cb.message.info("Querying...")
+    print("Querying...")
     query = cb.data.ExprDataSet.read_dataset(cmd_args.query)
     query = query[:, np.union1d(query.var_names, genes)]
     query = utils.clean_dataset(
@@ -120,7 +120,7 @@ def main(cmd_args):
             ) * 1000 / len(prediction_dict[cutoff])
     print("Time per cell: %.3fms" % time_per_cell)
 
-    cb.message.info("Saving results...")
+    print("Saving results...")
     if os.path.exists(cmd_args.output):
         os.remove(cmd_args.output)
     for cutoff in prediction_dict:

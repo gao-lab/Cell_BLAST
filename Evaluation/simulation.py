@@ -42,7 +42,7 @@ def parse_args():
 def main(cmd_args):
 
     # Simulation
-    cb.message.info("Simulating expression matrix...")
+    cb.utils.logger.info("Simulating expression matrix...")
     exprs_list, type_list = [], []
     for i in range(len(cmd_args.type_freqs)):
         type_size = np.round(cmd_args.type_freqs[i] * cmd_args.n_cells).astype(int)
@@ -72,7 +72,7 @@ def main(cmd_args):
     )
 
     # Model fitting
-    cb.message.info("Fitting model...")
+    cb.utils.logger.info("Fitting model...")
     data_dict = cb.utils.DataDict()
     data_dict["x"] = dataset.exprs
     model = cb.directi.fit_DIRECTi(
@@ -82,7 +82,7 @@ def main(cmd_args):
     model.save()
 
     # Model evaluation
-    cb.message.info("Evaluating model...")
+    cb.utils.logger.info("Evaluating model...")
     dataset.latent = model.inference(dataset)
     dataset.obs.insert(0, "cluster", np.vectorize(
         lambda x: "cluster_%d" % x
@@ -102,4 +102,4 @@ def main(cmd_args):
 
 if __name__ == "__main__":
     main(parse_args())
-    cb.message.info("Done!")
+    cb.utils.logger.info("Done!")

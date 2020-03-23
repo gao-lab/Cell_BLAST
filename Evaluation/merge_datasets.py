@@ -34,7 +34,7 @@ def main():
         snakemake.params.mapping = [""] * len(snakemake.input)
     assert len(snakemake.input) == len(snakemake.params.mapping)
 
-    cb.message.info("Reading data...")
+    cb.utils.logger.info("Reading data...")
     datasets = collections.OrderedDict()
     for input_file, mapping_file in zip(snakemake.input, snakemake.params.mapping):
         dataset = cb.data.ExprDataSet.read_dataset(input_file)
@@ -47,7 +47,7 @@ def main():
     merged_dataset = cb.data.ExprDataSet.merge_datasets(
         datasets, merge_uns_slots=snakemake.params.merge_uns_slots)
 
-    cb.message.info("Saving result...")
+    cb.utils.logger.info("Saving result...")
     if not os.path.exists(os.path.dirname(snakemake.output[0])):
         os.makedirs(os.path.dirname(snakemake.output[0]))
     merged_dataset.write_dataset(snakemake.output[0])

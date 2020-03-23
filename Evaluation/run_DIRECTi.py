@@ -74,7 +74,7 @@ def parse_args():
 
 
 def main(cmd_args):
-    cb.message.info("Reading data...")
+    cb.utils.logger.info("Reading data...")
     dataset = cb.data.ExprDataSet.read_dataset(cmd_args.input)
     if not cmd_args.no_normalize:
         dataset = dataset.normalize()
@@ -103,11 +103,18 @@ def main(cmd_args):
     prob_module_kwargs = dict(lambda_reg=cmd_args.lambda_prob_reg)
     rmbatch_module_kwargs = dict(lambda_reg=cmd_args.lambda_rmbatch_reg)
 
+    if cmd_args.genes is None:
+        genes = None
+    elif cmd_args.genes in dataset.uns:
+        genes = dataset.uns[cmd_args.genes]
+    else:
+        genes = np.loadtxt(cmd_args.genes, dtype=str)
+
     os.environ["CUDA_VISIBLE_DEVICES"] = utils.pick_gpu_lowest_memory() \
         if cmd_args.device is None else cmd_args.device
     start_time = time.time()
     model = cb.directi.fit_DIRECTi(
-        dataset, genes=None if cmd_args.genes is None else dataset.uns[cmd_args.genes],
+        dataset, genes=genes,
         latent_dim=cmd_args.latent_dim, cat_dim=cmd_args.cat_dim,
         supervision=cmd_args.supervision, batch_effect=cmd_args.batch_effect,
         h_dim=cmd_args.h_dim, depth=cmd_args.depth,
@@ -122,7 +129,7 @@ def main(cmd_args):
     )
     model.save()
 
-    cb.message.info("Saving results...")
+    cb.utils.logger.info("Saving results...")
     inferred_latent = model.inference(dataset)
     cb.data.write_hybrid_path(
         time.time() - start_time, "%s//time" % cmd_args.output)
@@ -142,4 +149,4 @@ def main(cmd_args):
 
 if __name__ == "__main__":
     main(parse_args())
-    cb.message.info("Done!")
+    cb.utils.logger.info("Done!")

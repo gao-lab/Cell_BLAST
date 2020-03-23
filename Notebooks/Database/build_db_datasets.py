@@ -1,27 +1,21 @@
-#!/usr/bin/env python
-
 import sys
 import os
 import pathlib
 import subprocess
-import getpass
 import numpy as np
 import pandas as pd
 import mysql.connector
 from utils import nan_safe
 
 
-def generate_datasets_meta():
+def generate_datasets_meta(snakemake):
     dataset_dict = {
         ds: (nb, [
-            file for file in os.listdir(os.path.join(nb, ds))
+            file for file in os.listdir(os.path.join("build", nb, ds))
             if file.endswith(".svg") and file != "peek.svg"
         ])
         for nb in snakemake.config["notebooks"]
-        for ds in os.listdir(nb) if
-            os.path.isdir(os.path.join(nb, ds)) and
-            not ds.startswith(".") and
-            ds != "__pycache__"
+        for ds in snakemake.config[nb]["output"]
     }
 
     used_columns = (
@@ -29,16 +23,16 @@ def generate_datasets_meta():
         "cell_number", "publication", "pmid", "remark"
     )
     single = pd.read_csv(
-        "~/SC/Datasets/ACA_datasets.csv",  # TODO: don't use absolute path
+        "../../Datasets/ACA_datasets.csv",
         comment="#", skip_blank_lines=True
     ).loc[:, used_columns]
     additional = pd.read_csv(
-        "~/SC/Datasets/additional_datasets.csv",  # TODO: don't use absolute path
+        "../../Datasets/additional_datasets.csv",
         comment="#", skip_blank_lines=True
     ).loc[:, used_columns]
     single = pd.concat([single, additional], axis=0, ignore_index=True)
     aligned = pd.read_csv(
-        "~/SC/Datasets/aligned_datasets.csv",  # TODO: don't use absolute path
+        "../../Datasets/aligned_datasets.csv",
         comment="#", skip_blank_lines=True
     ).loc[:, used_columns]
 
@@ -48,10 +42,6 @@ def generate_datasets_meta():
         ), "cell_number"].sum()
 
     combined = pd.concat([single, aligned], axis=0, ignore_index=True)
-    # combined = combined.loc[np.in1d(
-    #     combined["dataset_name"], list(dataset_dict.keys())
-    # ), :]
-    # combined["cell_number"] = combined["cell_number"].astype(np.int)
 
     combined["self-projection coverage"] = np.nan
     combined["self-projection accuracy"] = np.nan
@@ -59,6 +49,7 @@ def generate_datasets_meta():
     combined["visualization"] = np.nan
     combined["notebook"] = np.nan
     combined["display"] = False
+
     for idx, row in combined.iterrows():
         if row["dataset_name"] not in dataset_dict:
             continue
@@ -67,6 +58,7 @@ def generate_datasets_meta():
         combined.loc[idx, "notebook"] = dataset_dict[row["dataset_name"]][0]
         combined.loc[idx, "visualization"] = ", ".join(dataset_dict[row["dataset_name"]][1])
         spf_path = os.path.join(
+            "build",
             combined.loc[idx, "notebook"],
             row["dataset_name"],
             "self_projection.txt"
@@ -84,6 +76,7 @@ def generate_datasets_meta():
             print("Error reading self-projection metrics: " + spf_path)
 
         pf_path = os.path.join(
+            "build",
             combined.loc[idx, "notebook"],
             row["dataset_name"],
             "predictable.txt"
@@ -97,6 +90,18 @@ def generate_datasets_meta():
             print("Error reading predictable variables: " + pf_path)
 
     return combined
+
+
+def get_last_changed_version(cursor):
+    cursor.execute(
+        "SELECT `history`.`dataset_name`, `history`.`id`"
+        "FROM `versions`, `history` "
+        "WHERE `versions`.`version` = `history`.`version` "
+        "ORDER BY `versions`.`time` DESC;"
+    )
+    return pd.DataFrame.from_records(
+        cursor.fetchall(), columns=["dataset_name", "last_change"]
+    ).drop_duplicates(subset="dataset_name", keep="first")
 
 
 def create_table(cursor):
@@ -117,7 +122,9 @@ def create_table(cursor):
         "  `visualization` VARCHAR(200),"
         "  `notebook` VARCHAR(100),"
         "  `display` BOOL NOT NULL,"
-        "  PRIMARY KEY USING HASH(`dataset_name`)"
+        "  `last_change` INT,"
+        "  PRIMARY KEY USING HASH(`dataset_name`),"
+        "  FOREIGN KEY(`last_change`) REFERENCES `history`(`id`)"
         ");"
     )
 
@@ -128,12 +135,12 @@ def insert_data(cursor, data):
         "  `dataset_name`, `organism`, `organ`, `platform`,"
         "  `cell_number`, `publication`, `pmid`, `remark`,"
         "  `self-projection coverage`, `self-projection accuracy`,"
-        "  `predictions`, `visualization`, `notebook`, `display`"
+        "  `predictions`, `visualization`, `notebook`, `display`, `last_change`"
         ") VALUES ("
         "  %s, %s, %s, %s,"
         "  %s, %s, %s, %s,"
         "  %s, %s,"
-        "  %s, %s, %s, %s"
+        "  %s, %s, %s, %s, %s"
         ");"
     )
     cursor.executemany(insert_sql, [(
@@ -144,31 +151,22 @@ def insert_data(cursor, data):
         nan_safe(row["self-projection coverage"], lambda x: float(np.round(x, 3))),
         nan_safe(row["self-projection accuracy"], lambda x: float(np.round(x, 3))),
         nan_safe(row["predictable"]), nan_safe(row["visualization"]),
-        nan_safe(row["notebook"]), nan_safe(row["display"])
+        nan_safe(row["notebook"]), nan_safe(row["display"]),
+        nan_safe(row["last_change"], int)
     ) for _, row in data.iterrows()])
 
 
-def main():
-    with open(snakemake.input.init, "r") as init:
-        init_ret = subprocess.call("mysql -u caozj -p".split(" "), stdin=init)
-    if init_ret:
-        sys.exit(init_ret)
-    while True:
-        try:
-            cnx = mysql.connector.connect(
-                user=getpass.getuser(), password=getpass.getpass("Enter password: "),
-                host="127.0.0.1", database="aca"
-            )
-        except mysql.connector.errors.ProgrammingError:
-            print("Incorrect password! Try again.")
-            continue
-        except KeyboardInterrupt:
-            print("Abort")
-            sys.exit(1)
-        break
+def main(snakemake):
+    cnx = mysql.connector.connect(
+        user=snakemake.config["db_user"], password=snakemake.config["db_passwd"],
+        host="127.0.0.1", database="aca"
+    )
     cursor = cnx.cursor()
     create_table(cursor)
-    insert_data(cursor, generate_datasets_meta())
+    datasets_meta = generate_datasets_meta(snakemake).merge(
+        get_last_changed_version(cursor), how="left"
+    )
+    insert_data(cursor, datasets_meta)
     cnx.commit()
     cursor.close()
     cnx.close()
@@ -176,4 +174,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(snakemake)

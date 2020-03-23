@@ -28,7 +28,7 @@ def parse_args():
 
 def main(cmd_args):
 
-    cb.message.info("Reading data...")
+    cb.utils.logger.info("Reading data...")
     dataset = cb.data.ExprDataSet.read_dataset(cmd_args.ref)
     if cmd_args.clean:
         dataset = utils.clean_dataset(dataset, cmd_args.clean)
@@ -37,13 +37,13 @@ def main(cmd_args):
         if cmd_args.device is None else cmd_args.device
     models = [cb.directi.DIRECTi.load(model) for model in cmd_args.models]
 
-    cb.message.info("Building Cell BLAST index...")
+    cb.utils.logger.info("Building Cell BLAST index...")
     blast = cb.blast.BLAST(models, dataset, n_posterior=cmd_args.n_posterior)
 
-    cb.message.info("Saving index...")
+    cb.utils.logger.info("Saving index...")
     blast.save(cmd_args.output_path)
 
-    cb.message.info("Done!")
+    cb.utils.logger.info("Done!")
 
 
 if __name__ == "__main__":

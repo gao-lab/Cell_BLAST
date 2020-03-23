@@ -37,13 +37,17 @@ rule dimension_reduction_plot:
 
 rule dimension_reduction_summary:
     input:
-        ["{path}/metrics.json".format(path=item) for item in expand(
-            "../Results/{method}/{dataset}/dim_{dimensionality}/seed_{seed}",
-            method=config["method"],
-            dataset=config["dataset"],
-            dimensionality=config["dimensionality"],
-            seed=range(config["seed"])
-        ) if not os.path.exists("{path}/.blacklist".format(path=item))]
+        [f"{path}/metrics.json" for path in [
+            f"../Results/{method}/{dataset}/dim_{dimensionality}/seed_{seed}"
+            for method in config["method"]
+            for dataset in config["dataset"]
+            for dimensionality in (
+                config[method]["dimensionality"]
+                if method in config and "dimensionality" in config[method]
+                else config["dimensionality"]
+            )
+            for seed in range(config["seed"])
+        ] if not os.path.exists(f"{path}/.blacklist")]
     output:
         "../Results/dimension_reduction.csv"
     params:

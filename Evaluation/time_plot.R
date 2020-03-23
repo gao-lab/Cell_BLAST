@@ -23,6 +23,6 @@ gp <- ggplot(data = df %>% group_by(method, size) %>% summarise(
 ) + scale_x_log10(
     name = "Reference size"
 ) + scale_y_continuous(
-    name = "Time per query (ms)"
+    name = "Time per query cell (ms)"
 ) + scale_colour_manual(values = color_mapping, name = "Method")
 ggsave(snakemake@output[[1]], mod_style(gp), width = 5.2, height = 3.0)

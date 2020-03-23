@@ -66,7 +66,7 @@ class BLASTTest(unittest.TestCase):
 
     def test_amd_pval_blast(self):
         blast = cb.blast.BLAST(self.models, self.data, distance_metric="amd", n_posterior=20, cluster_empirical=True, force_components=False)
-        hits = blast.query(self.data)
+        hits = blast.query(self.data, store_dataset=True)
         prediction = hits.filter(by="pval", cutoff=0.05).annotate("cell_type1")
         blast.save("./test_blast")
         blast2 = cb.blast.BLAST.load("./test_blast")
@@ -79,10 +79,12 @@ class BLASTTest(unittest.TestCase):
     def test_npdv2_pval_blast(self):
         blast = cb.blast.BLAST(self.models, self.data, distance_metric="npd_v2", n_posterior=20)
         hits = blast.query(self.data)
+        for _ in hits:
+            pass
         prediction = hits.reconcile_models().filter(by="pval").annotate("ABRACL").fillna(0)
         blast.save("./test_blast")
         blast2 = cb.blast.BLAST.load("./test_blast")
-        hits2 = blast2.query(self.data)
+        hits2 = blast2.query(self.data, store_dataset=True)
         prediction2 = hits2.reconcile_models().filter(by="pval").annotate("ABRACL").fillna(0)
         self.assertTrue(np.all(prediction.values == prediction2.values))
 
@@ -93,7 +95,7 @@ class BLASTTest(unittest.TestCase):
         prediction = hits.reconcile_models().filter(by="pval").annotate("cell_type1")
         blast.save("./test_blast")
         blast2 = cb.blast.BLAST.load("./test_blast", mode=cb.blast.MINIMAL)
-        hits2 = blast2.query(self.data)
+        hits2 = blast2.query(self.data, store_dataset=True)
         prediction2 = hits2.reconcile_models().filter(by="pval").annotate("cell_type1")
         self.assertTrue(np.all(prediction.values == prediction2.values))
 

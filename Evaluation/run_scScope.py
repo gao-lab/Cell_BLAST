@@ -63,4 +63,4 @@ def main(cmd_args):
 
 if __name__ == "__main__":
     main(parse_args())
-    cb.message.info("Done!")
+    print("Done!")

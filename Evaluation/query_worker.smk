@@ -82,6 +82,50 @@ rule query_cb:
         "-c {config[Cell_BLAST][threshold]} -j {threads} "
         "-s {wildcards.seed} --clean {config[label]} > {log} 2>&1"
 
+rule query_scanvi_train:
+    input:
+        ref=lambda wildcards: "../Datasets/data/{ref}/data.h5".format(
+            ref="+".join(config[wildcards.group]["ref"])
+        )
+    output:
+        "../Results/{scanvi,scANVI.*}/{group}/dim_{dimensionality}/seed_{seed}/result.h5"
+    log:
+        "../Results/{scanvi}/{group}/dim_{dimensionality}/seed_{seed}/log.txt"
+    params:
+        blacklist="../Results/{scanvi}/{group}/dim_{dimensionality}/seed_{seed}/.blacklist",
+        normalized=lambda wildcards: "-n" if wildcards.scanvi == "scANVI_normalized" else ""
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        "timeout {config[timeout]} python -u run_scVI.py -i {input} -o {output} "
+        "-g {config[genes]} --n-latent {wildcards.dimensionality} "
+        "--supervision {config[label]} --label-fraction 1.0 --clean {config[label]} {params.normalized} "
+        "-s {wildcards.seed} > {log} 2>&1 || touch {params.blacklist}"
+
+rule query_scanvi:
+    input:
+        model=lambda wildcards: "../Results/{scanvi}/{group}/dim_{dimensionality}/seed_{seed}/result.h5".format(
+            scanvi=wildcards.scanvi,
+            group=wildcards.group,
+            dimensionality=config["scANVI"]["dimensionality"],
+            seed=wildcards.seed
+        ),
+        query="../Datasets/data/{query}/data.h5"
+    output:
+        "../Results/{scanvi,scANVI.*}/{group}/seed_{seed}/{query}/result.h5"
+    log:
+        "../Results/{scanvi}/{group}/seed_{seed}/{query}/log.txt"
+    params:
+        model=lambda wildcards, input: os.path.dirname(input.model),
+        normalized=lambda wildcards: "-n" if wildcards.scanvi == "scANVI_normalized" else "",
+        threshold=lambda wildcards: config[wildcards.scanvi]["threshold"]
+    threads: 4
+    shell:
+        "timeout {config[timeout]} python -u run_scANVI_query.py -m {params.model} "
+        "-q {input.query} -c {params.threshold} -o {output} {params.normalized} "
+        "--clean {config[label]} > {log} 2>&1"
+
 rule query_dca:
     input:
         ref=lambda wildcards: "../Datasets/data/{ref}/data.h5".format(

@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-import sys
 import pathlib
-import getpass
 import numpy as np
 import pandas as pd
 import mysql.connector
@@ -22,14 +18,14 @@ def get_datasets(cnx):
 def get_data(dataset, notebook):
     obs = {
         key: val for key, val in cb.data.read_hybrid_path(
-            "%s/%s/ref.h5//obs" % (notebook, dataset)
+            "build/%s/%s/ref.h5//obs" % (notebook, dataset)
         ).items() if not (
             key.startswith("latent_") or
             key in ("organism", "organ", "platform", "__libsize__")
         )
     }
     obs["cid"] = cb.data.read_hybrid_path(
-        "%s/%s/ref.h5//obs_names" % (notebook, dataset))
+        "build/%s/%s/ref.h5//obs_names" % (notebook, dataset))
     obs = pd.DataFrame(obs)
     if "dataset_name" not in obs.columns.values:
         obs["dataset_name"] = dataset
@@ -42,6 +38,14 @@ def native_type(x):
     if isinstance(x, np.integer):
         return int(x)
     return x
+
+
+def safe_len(x):
+    try:
+        if np.isnan(x):
+            return 0
+    except TypeError:
+        return len(x)
 
 
 def create_table(cnx, dataset, notebook):
@@ -58,7 +62,7 @@ def create_table(cnx, dataset, notebook):
             if column in ("cid", "dataset_name"):
                 dtype = "CHAR(50)"
             else:
-                dtype = "CHAR(%d)" % np.vectorize(len)(data[column]).max()
+                dtype = "CHAR(%d)" % np.vectorize(safe_len)(data[column]).max()
         elif np.issubdtype(data[column].dtype.type, np.floating):
             dtype = "FLOAT"
         elif np.issubdtype(data[column].dtype.type, np.integer):
@@ -91,20 +95,11 @@ def create_table(cnx, dataset, notebook):
     cursor.close()
 
 
-def main():
-    while True:
-        try:
-            cnx = mysql.connector.connect(
-                user=getpass.getuser(), password=getpass.getpass("Enter password: "),
-                host="127.0.0.1", database="aca"
-            )
-        except mysql.connector.errors.ProgrammingError:
-            print("Incorrect password! Try again.")
-            continue
-        except KeyboardInterrupt:
-            print("Abort")
-            sys.exit(1)
-        break
+def main(snakemake):
+    cnx = mysql.connector.connect(
+        user=snakemake.config["db_user"], password=snakemake.config["db_passwd"],
+        host="127.0.0.1", database="aca"
+    )
     for dataset, notebook in get_datasets(cnx):
         print("Working on %s..." % dataset)
         create_table(cnx, dataset, notebook)
@@ -114,4 +109,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(snakemake)

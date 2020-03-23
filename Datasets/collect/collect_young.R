@@ -60,9 +60,7 @@ meta_df <- meta_df %>%
         cell_type1 != "Distal_tubules_and_collecting_duct"
     ) %>%
     select(-one_of("Label", "Experiment"))
-meta_df$organism <- "Homo sapiens"
-meta_df$platform <- "10x"
-meta_df$dataset_name <- "Young"
+
 rownames(meta_df) <- meta_df$DropletID
 meta_df$DropletID <- NULL
 

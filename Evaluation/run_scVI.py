@@ -6,6 +6,7 @@
 
 import os
 import time
+import pickle
 import argparse
 import numpy as np
 import scipy.stats
@@ -41,6 +42,7 @@ def parse_args():
     parser.add_argument("--patience", dest="patience", type=int, default=30)
     parser.add_argument("--learning-rate", dest="lr", type=float, default=1e-3)
 
+    parser.add_argument("-n", "--normalize", dest="normalize", default=False, action="store_true")
     parser.add_argument("-s", "--seed", dest="seed", type=int, default=None)
     parser.add_argument("-d", "--device", dest="device", type=str, default=None)
     parser.add_argument("--clean", dest="clean", type=str, default=None)
@@ -60,14 +62,17 @@ def main(cmd_args):
     dataset = cb.data.ExprDataSet.read_dataset(cmd_args.input, sparsify=True)
     if cmd_args.clean is not None:
         dataset = utils.clean_dataset(dataset, cmd_args.clean)
+    if cmd_args.normalize:
+        dataset = dataset.normalize()
     if cmd_args.genes is not None:
         dataset = dataset[:, dataset.uns[cmd_args.genes]]
+    genes = dataset.var_names
     if cmd_args.batch_effect is not None:
         batch_indices = sklearn.preprocessing.LabelEncoder().fit_transform(
             dataset.obs[cmd_args.batch_effect])
     if cmd_args.supervision is not None:
-        labels = sklearn.preprocessing.LabelEncoder().fit_transform(
-            dataset.obs[cmd_args.supervision])
+        label_encoder = sklearn.preprocessing.LabelEncoder()
+        labels = label_encoder.fit_transform(dataset.obs[cmd_args.supervision])
         if cmd_args.label_fraction is not None:
             if cmd_args.label_priority is not None:
                 label_priority = dataset.obs[cmd_args.label_priority]
@@ -81,7 +86,7 @@ def main(cmd_args):
                     ) / (mask.sum() - 1)
             if cmd_args.label_fraction == 1.0:
                 # Remove a small number of labelled cells to avoid empty
-                # unlabelled set, which will lead to a crash.
+                # unlabeled set, which will lead to a crash.
                 cmd_args.label_fraction = 0.99
             labelled_indices = np.where(label_priority >= np.percentile(
                 label_priority, (1 - cmd_args.label_fraction) * 100
@@ -130,9 +135,13 @@ def main(cmd_args):
     latent = trainer.get_all_latent_and_imputed_values()["latent"]
     cb.data.write_hybrid_path(latent, "//".join([cmd_args.output, "latent"]))
 
+    if cmd_args.supervision is not None:
+        with open(os.path.join(cmd_args.output_path, "label_encoder.pickle"), "wb") as f:
+            pickle.dump(label_encoder, f)
+    np.savetxt(os.path.join(cmd_args.output_path, "genes.txt"), genes, fmt="%s")
     torch.save(vae, os.path.join(cmd_args.output_path, "model.pickle"))
     os.remove(os.path.join(cmd_args.output_path, "data.h5ad"))
 
 if __name__ == "__main__":
     main(parse_args())
-    cb.message.info("Done!")
+    print("Done!")

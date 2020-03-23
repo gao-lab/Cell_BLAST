@@ -7,6 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+plt.rcParams['svg.hashsalt'] = "hashsalt"
+plt.rcParams['svg.fonttype'] = "none"
+plt.rcParams['font.family'] = "Arial"
+
 
 def mkdir(fn):
     def wrapped(*args):

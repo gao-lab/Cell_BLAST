@@ -44,8 +44,8 @@
         "output": ["Quake_10x_Heart_and_Aorta", "Quake_Smart-seq2_Heart", "ALIGNED_Mus_musculus_Heart_and_Aorta"]
     },
     "kidney": {
-        "input": ["Karaiskos_mouse", "Adam", "Quake_10x_Kidney", "Quake_Smart-seq2_Kidney", "Wang_Kidney", "Wu_human", "Young", "Park", "Alemany_Kidney"],
-        "output": ["Karaiskos_mouse", "Adam", "Quake_10x_Kidney", "Wang_Kidney", "Wu_human", "Young", "Park", "Alemany_Kidney", "ALIGNED_Mus_musculus_Kidney", "ALIGNED_Homo_sapiens_Kidney"]
+        "input": ["Karaiskos_mouse", "Adam", "Quake_10x_Kidney", "Quake_Smart-seq2_Kidney", "Wang_Kidney", "Wu_human", "Young", "Park", "Hochane", "Alemany_Kidney"],
+        "output": ["Karaiskos_mouse", "Adam", "Quake_10x_Kidney", "Wang_Kidney", "Wu_human", "Young", "Park", "Hochane", "Alemany_Kidney", "ALIGNED_Mus_musculus_Kidney", "ALIGNED_Homo_sapiens_Kidney"]
     },
     "large_intestine": {
         "input": ["Quake_Smart-seq2_Large_Intestine"],
@@ -65,7 +65,7 @@
     },
     "mammary_gland": {
         "input": ["Quake_10x_Mammary_Gland", "Quake_Smart-seq2_Mammary_Gland", "Bach", "Giraddi_10x", "Sun", "Nguyen_10x", "Nguyen_C1"],
-        "output": ["Quake_10x_Mammary_Gland", "Quake_Smart-seq2_Mammary_Gland", "Bach", "Giraddi_10x", "ALIGNED_Mus_musculus_Mammary_Gland", "ALIGNED_Homo_sapiens_Mammary_Gland"]
+        "output": ["Quake_10x_Mammary_Gland", "Quake_Smart-seq2_Mammary_Gland", "Bach", "Giraddi_10x", "Nguyen_10x", "ALIGNED_Mus_musculus_Mammary_Gland", "ALIGNED_Homo_sapiens_Mammary_Gland"]
     },
     "mouse_embryo": {
         "input": ["Cao_2019"],
@@ -80,8 +80,8 @@
         "output": ["Zeisel_2018"]
     },
     "pancreas": {
-        "input": ["Baron_human", "Muraro", "Enge", "Xin_2016", "Segerstolpe", "Lawlor", "Baron_mouse", "Quake_Smart-seq2_Pancreas", "Qiu"],
-        "output": ["Baron_human", "Muraro", "Enge", "Baron_mouse", "Quake_Smart-seq2_Pancreas", "Qiu", "ALIGNED_Homo_sapiens_Pancreas", "ALIGNED_Mus_musculus_Pancreas"]
+        "input": ["Baron_human", "Muraro", "Enge", "Xin_2016", "Segerstolpe", "Lawlor", "Baron_mouse", "Quake_Smart-seq2_Pancreas", "Qiu", "Singh"],
+        "output": ["Baron_human", "Muraro", "Enge", "Baron_mouse", "Quake_Smart-seq2_Pancreas", "Qiu", "Singh", "ALIGNED_Homo_sapiens_Pancreas", "ALIGNED_Mus_musculus_Pancreas"]
     },
     "pbmc": {
         "input": ["Zheng"],

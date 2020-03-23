@@ -1,30 +1,28 @@
-"""
+r"""
 Cell BLAST based on DIRECTi models
 """
 
-import os
-import glob
 import collections
+import glob
+import os
+import typing
+import tempfile
+
+import joblib
+import numba
 import numpy as np
 import pandas as pd
-import scipy.stats
 import scipy.sparse
+import scipy.stats
 import sklearn.neighbors
-import numba
-import joblib
-from . import directi
-from . import metrics
-from . import message
-from . import data
-from . import config
-from . import utils
 
-pd.options.mode.chained_assignment = None  # FIXME: this should be avoided
+from . import config, data, directi, metrics, utils
+
 NORMAL = 1
 MINIMAL = 0
 
 
-def _wasserstein_distance_impl(x, y):  # pragma: no cover
+def _wasserstein_distance_impl(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     x_sorter = np.argsort(x)
     y_sorter = np.argsort(y)
     xy = np.concatenate((x, y))
@@ -35,7 +33,7 @@ def _wasserstein_distance_impl(x, y):  # pragma: no cover
     return np.sum(np.multiply(np.abs(x_cdf - y_cdf), deltas))
 
 
-def _energy_distance_impl(x, y):  # pragma: no cover
+def _energy_distance_impl(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     x_sorter = np.argsort(x)
     y_sorter = np.argsort(y)
     xy = np.concatenate((x, y))
@@ -48,21 +46,21 @@ def _energy_distance_impl(x, y):  # pragma: no cover
 
 @numba.extending.overload(
     scipy.stats.wasserstein_distance, jit_options={"nogil": True, "cache": True})
-def _wasserstein_distance(x, y):  # pragma: no cover
+def _wasserstein_distance(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     if x == numba.float32[::1] and y == numba.float32[::1]:
         return _wasserstein_distance_impl
 
 
 @numba.extending.overload(
     scipy.stats.energy_distance, jit_options={"nogil": True, "cache": True})
-def _energy_distance(x, y):  # pragma: no cover
+def _energy_distance(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     if x == numba.float32[::1] and y == numba.float32[::1]:
         return _energy_distance_impl
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def ed(x, y):  # pragma: no cover
-    """
+def ed(x: np.ndarray, y: np.ndarray):  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     """
@@ -70,8 +68,10 @@ def ed(x, y):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _md(x, y, x_posterior):  # pragma: no cover
-    """
+def _md(
+        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -85,8 +85,11 @@ def _md(x, y, x_posterior):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def md(x, y, x_posterior, y_posterior):  # pragma: no cover
-    """
+def md(
+        x: np.ndarray, y: np.ndarray,
+        x_posterior: np.ndarray, y_posterior: np.ndarray
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -98,8 +101,10 @@ def md(x, y, x_posterior, y_posterior):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _compute_pcasd(x, x_posterior, eps):  # pragma: no cover
-    """
+def _compute_pcasd(
+        x: np.ndarray, x_posterior: np.ndarray, eps: float
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     x_posterior : n_posterior * latent_dim
     """
@@ -121,8 +126,10 @@ def _compute_pcasd(x, x_posterior, eps):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _compute_pcasd_across_models(x, x_posterior, eps=1e-1):  # pragma: no cover
-    """
+def _compute_pcasd_across_models(
+        x: np.ndarray, x_posterior: np.ndarray, eps: float = 1e-1
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : n_models * latent_dim
     x_posterior : n_models * n_posterior * latent_dim
     """
@@ -133,8 +140,11 @@ def _compute_pcasd_across_models(x, x_posterior, eps=1e-1):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _amd(x, y, x_posterior, eps, x_is_pcasd=False):  # pragma: no cover
-    """
+def _amd(
+        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray,
+        eps: float, x_is_pcasd: bool = False
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -155,8 +165,12 @@ def _amd(x, y, x_posterior, eps, x_is_pcasd=False):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def amd(x, y, x_posterior, y_posterior, eps=1e-1, x_is_pcasd=False, y_is_pcasd=False):  # pragma: no cover
-    """
+def amd(
+        x: np.ndarray, y: np.ndarray,
+        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 1e-1,
+        x_is_pcasd: bool = False, y_is_pcasd: bool = False
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -171,16 +185,19 @@ def amd(x, y, x_posterior, y_posterior, eps=1e-1, x_is_pcasd=False, y_is_pcasd=F
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def npd_v1(x, y, x_posterior, y_posterior, eps=0.0):  # pragma: no cover
-    """
+def npd_v1(
+        x: np.ndarray, y: np.ndarray,
+        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 0.0
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
     y_posterior : n_posterior * latent_dim
     """
     projection = x - y  # latent_dim
-    if np.all(projection == 0):
-        projection[...] = 1  # any projection is equivalent
+    if np.all(projection == 0.0):
+        projection[...] = 1.0  # any projection is equivalent
     projection /= np.linalg.norm(projection)
     x_posterior = np.sum(x_posterior * projection, axis=1)  # n_posterior_samples
     y_posterior = np.sum(y_posterior * projection, axis=1)  # n_posterior_samples
@@ -197,8 +214,10 @@ def npd_v1(x, y, x_posterior, y_posterior, eps=0.0):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _npd_v2(x, y, x_posterior, eps):  # pragma: no cover
-    """
+def _npd_v2(
+        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray, eps: float
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -218,8 +237,11 @@ def _npd_v2(x, y, x_posterior, eps):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def npd_v2(x, y, x_posterior, y_posterior, eps=1e-1):  # pragma: no cover
-    """
+def npd_v2(
+        x: np.ndarray, y: np.ndarray,
+        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 1e-1
+) -> np.ndarray:  # pragma: no cover
+    r"""
     x : latent_dim
     y : latent_dim
     x_posterior : n_posterior * latent_dim
@@ -234,8 +256,11 @@ def npd_v2(x, y, x_posterior, y_posterior, eps=1e-1):  # pragma: no cover
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
-def _hit_ed_across_models(query_latent, ref_latent):  # pragma: no cover
-    """
+def _hit_ed_across_models(
+        query_latent: np.ndarray,
+        ref_latent: np.ndarray
+) -> np.ndarray:  # pragma: no cover
+    r"""
     query_latent : n_models * latent_dim
     ref_latent : n_hits * n_models * latent_dim
     returns : n_hits * n_models
@@ -251,9 +276,10 @@ def _hit_ed_across_models(query_latent, ref_latent):  # pragma: no cover
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_md_across_models(
-    query_latent, ref_latent, query_posterior, ref_posterior
-):  # pragma: no cover
-    """
+        query_latent: np.ndarray, ref_latent: np.ndarray,
+        query_posterior: np.ndarray, ref_posterior: np.ndarray
+) -> np.ndarray:  # pragma: no cover
+    r"""
     query_latent : n_models * latent_dim
     ref_latent : n_hits * n_models * latent_dim
     query_posterior : n_models * n_posterior * latent_dim
@@ -273,9 +299,10 @@ def _hit_md_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_amd_across_models(
-    query_latent, ref_latent, query_posterior, ref_posterior, eps=1e-1
-):  # pragma: no cover
-    """
+        query_latent: np.ndarray, ref_latent: np.ndarray,
+        query_posterior: np.ndarray, ref_posterior: np.ndarray, eps: float = 1e-1
+) -> np.ndarray:  # pragma: no cover
+    r"""
     query_latent : n_models * latent_dim
     ref_latent : n_hits * n_models * latent_dim
     query_posterior : n_models * n_posterior * latent_dim
@@ -298,9 +325,11 @@ def _hit_amd_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_npd_v1_across_models(
-    query_latent, ref_latent, query_posterior, ref_posterior, eps=0.0
-):  # pragma: no cover
-    """
+        query_latent: np.ndarray, ref_latent: np.ndarray,
+        query_posterior: np.ndarray, ref_posterior: np.ndarray,
+        eps: float = 0.0
+) -> np.ndarray:  # pragma: no cover
+    r"""
     query_latent : n_models * latent_dim
     ref_latent : n_hits * n_models * latent_dim
     query_posterior : n_models * n_posterior * latent_dim
@@ -320,9 +349,11 @@ def _hit_npd_v1_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_npd_v2_across_models(
-    query_latent, ref_latent, query_posterior, ref_posterior, eps=1e-1
-):  # pragma: no cover
-    """
+        query_latent: np.ndarray, ref_latent: np.ndarray,
+        query_posterior: np.ndarray, ref_posterior: np.ndarray,
+        eps: float = 1e-1
+) -> np.ndarray:  # pragma: no cover
+    r"""
     query_latent : n_models * latent_dim
     ref_latent : n_hits * n_models * latent_dim
     query_posterior : n_models * n_posterior * latent_dim
@@ -351,36 +382,35 @@ DISTANCE_METRIC_ACROSS_MODELS = {
 
 class BLAST(object):
 
-    """
+    r"""
     Cell BLAST
 
     Parameters
     ----------
-    models : list
-        A list of ``Cell_BLAST.directi.DIRECTi`` models.
-    ref : Cell_BLAST.data.ExprDataSet
+    models
+        A list of "DIRECTi" models.
+    ref
         A reference dataset.
-    distance_metric : {"npd_v1", "npd_v2", "md", "amd", "ed"}
-        Cell-to-cell distance metric to use, by default "npd_v1".
-    n_posterior : int
+    distance_metric
+        Cell-to-cell distance metric to use, should be among
+        {"npd_v1", "npd_v2", "md", "amd", "ed"}.
+    n_posterior
         How many samples from the posterior distribution to use for
-        estimating posterior distance, by default 50. Irrelevant for
-        distance_metric="ed".
-    n_empirical : int
+        estimating posterior distance. Irrelevant for distance_metric="ed".
+    n_empirical
         Number of random cell pairs to use when estimating empirical
-        distribution of cell-to-cell distance, by default 10000.
-    cluster_empirical : bool
+        distribution of cell-to-cell distance.
+    cluster_empirical
         Whether to build an empirical distribution for each intrinsic cluster
-        independently, by default False, meaning one global empirical
-        distribution is used.
-    eps : float
+        independently.
+    eps
         A small number added to the normalization factors used in certain
-        posterior-based distance metrics to improve numeric stability,
-        by default None, in which case a recommended value will be used
-        according to the specified distance metric.
-    force_components : bool
-        Whether to compute all the necessary components upon initialization,
-        by default True. If set to False, necessary components will be computed
+        posterior-based distance metrics to improve numeric stability.
+        If not specified, a recommended value will be used according to the
+        specified distance metric.
+    force_components
+        Whether to compute all the necessary components upon initialization.
+        If set to False, necessary components will be computed
         on the fly when performing queries.
 
     Examples
@@ -388,13 +418,15 @@ class BLAST(object):
 
     A typical BLAST pipeline is described below.
 
-    Assuming we have a list of ``DIRECTi`` models already fitted on some
-    reference data, we can construct a BLAST object by feeding the pretrained
-    models and the reference data to the ``Cell_BLAST.blast.BLAST`` constructor.
+    Assuming we have a list of :class:`directi.DIRECTi` models already fitted
+    on some reference data, we can construct a BLAST object by feeding the
+    pretrained models and the reference data to the
+    :class:`BLAST` constructor.
 
     >>> blast = BLAST(models, reference)
 
-    We can efficiently query the reference and obtain initial hits via the ``query`` method:
+    We can efficiently query the reference and obtain initial hits via the
+    :meth:`BLAST.query` method:
 
     >>> hits = blast.query(query)
 
@@ -404,17 +436,21 @@ class BLAST(object):
 
     >>> hits = hits.reconcile_models().filter(by="pval", cutoff=0.05)
 
-    Finally, we use the ``annotate`` method to obtain predictions based on
-    reference annotations, e.g. "cell_ontology_class" in this case.
+    Finally, we use the :meth:`BLAST.annotate` method to obtain predictions
+    based on reference annotations, e.g. "cell_ontology_class" in this case.
 
     >>> annotation = hits.annotate("cell_ontology_class")
 
     See the BLAST ipython notebook (:ref:`vignettes`) for live examples.
     """
 
-    def __init__(self, models, ref, distance_metric="npd_v1", n_posterior=50,
-                 n_empirical=10000, cluster_empirical=False, eps=None,
-                 force_components=True, **kwargs):
+    def __init__(
+            self, models: typing.List[directi.DIRECTi],
+            ref: data.ExprDataSet, distance_metric: str = "npd_v1",
+            n_posterior: int = 50, n_empirical: int = 10000,
+            cluster_empirical: bool = False, eps: typing.Optional[float] = None,
+            force_components: bool = True, **kwargs
+    ) -> None:
         self.models = models
         self.ref = data.ExprDataSet(
             ref.exprs, ref.obs.copy(), ref.var.copy(), ref.uns.copy()
@@ -436,10 +472,10 @@ class BLAST(object):
         if force_components:
             self._force_components(**kwargs)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.models)
 
-    def __getitem__(self, s):
+    def __getitem__(self, s) -> "BLAST":
         blast = BLAST(
             np.array(self.models)[s].tolist(),
             self.ref, self.distance_metric, self.n_posterior, self.n_empirical,
@@ -458,9 +494,9 @@ class BLAST(object):
         ] if self.empirical is not None else None
         return blast
 
-    def _get_latent(self, n_jobs):  # n_cells * n_models * latent_dim
+    def _get_latent(self, n_jobs: int) -> np.ndarray:  # n_cells * n_models * latent_dim
         if self.latent is None:
-            message.info("Projecting to latent space...")
+            utils.logger.info("Projecting to latent space...")
             self.latent = np.stack(joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="threading"
             )(joblib.delayed(model.inference)(
@@ -468,9 +504,9 @@ class BLAST(object):
             ) for model in self.models), axis=1)
         return self.latent
 
-    def _get_cluster(self, n_jobs):  # n_cells * n_models
+    def _get_cluster(self, n_jobs: int) -> np.ndarray:  # n_cells * n_models
         if self.cluster is None:
-            message.info("Obtaining intrinsic clustering...")
+            utils.logger.info("Obtaining intrinsic clustering...")
             self.cluster = np.stack(joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="threading"
             )(joblib.delayed(model.clustering)(
@@ -478,22 +514,26 @@ class BLAST(object):
             ) for model in self.models), axis=1)
         return self.cluster
 
-    def _get_posterior(self, n_jobs, random_seed, idx=None):  # n_cells * (n_models * n_posterior * latent_dim)
+    def _get_posterior(
+            self, n_jobs: int, random_seed: int,
+            idx: typing.Optional[np.ndarray] = None
+    ) -> np.ndarray:  # n_cells * (n_models * n_posterior * latent_dim)
         if idx is None:
             idx = np.arange(self.ref.shape[0])
         new_idx = np.intersect1d(np.unique(idx), np.where(np.vectorize(
             lambda x: x is None
         )(self.posterior))[0])
         if new_idx.size:
-            message.info("Sampling from posteriors...")
+            utils.logger.info("Sampling from posteriors...")
             new_ref = self.ref[new_idx, :]
             new_posterior = np.stack(joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="threading"
             )(joblib.delayed(model.inference)(
                 new_ref, n_posterior=self.n_posterior, random_seed=random_seed
             ) for model in self.models), axis=1)  # n_cells * n_models * n_posterior * latent_dim
-            # NOTE: Slow discontigous memcopy here, but that's necessary since we will be caching values by cells.
-            # It also makes values more contiguous and faster to access in later cell-based operations.
+            # NOTE: Slow discontigous memcopy here, but that's necessary since
+            # we will be caching values by cells. It also makes values more
+            # contiguous and faster to access in later cell-based operations.
             if self.distance_metric is amd:
                 dist_kws = {"eps": self.eps} if self.eps is not None else {}
                 new_latent = self._get_latent(n_jobs)[new_idx]
@@ -506,12 +546,14 @@ class BLAST(object):
                 self.posterior[new_idx] = [item for item in new_posterior]  # NOTE: No memcopy here
         return self.posterior[idx]
 
-    def _get_nearest_neighbors(self, n_jobs):
+    def _get_nearest_neighbors(
+            self, n_jobs: int
+    ) -> typing.List[sklearn.neighbors.NearestNeighbors]:  # n_models
         if self.nearest_neighbors is None:
-            message.info("Fitting nearest neighbor trees...")
             latent = self._get_latent(n_jobs).swapaxes(0, 1)
             # NOTE: Makes cells discontiguous, but for nearest neighbor tree,
             # there's no influence on performance
+            utils.logger.info("Fitting nearest neighbor trees...")
             self.nearest_neighbors = joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="loky"
             )(joblib.delayed(self._fit_nearest_neighbors)(
@@ -519,9 +561,11 @@ class BLAST(object):
             ) for _latent in latent)
         return self.nearest_neighbors
 
-    def _get_empirical(self, n_jobs, random_seed):  # n_models * [n_clusters * n_empirical]
+    def _get_empirical(
+            self, n_jobs: int, random_seed: int
+    ) -> np.ndarray:  # n_models * [n_clusters * n_empirical]
         if self.empirical is None:
-            message.info("Generating empirical null distributions...")
+            utils.logger.info("Generating empirical null distributions...")
             if not self.cluster_empirical:
                 self.cluster = np.zeros((
                     self.ref.shape[0], len(self)
@@ -559,31 +603,42 @@ class BLAST(object):
                 self.empirical.append(empirical)
         return self.empirical
 
-    def _force_components(self, n_jobs=config._USE_GLOBAL, random_seed=config._USE_GLOBAL):
+    def _force_components(
+            self, n_jobs: int = config._USE_GLOBAL,
+            random_seed: int = config._USE_GLOBAL
+    ) -> None:
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
         random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
-        _ = self._get_nearest_neighbors(n_jobs)
+        self._get_nearest_neighbors(n_jobs)
         if self.distance_metric is not ed:
-            _ = self._get_posterior(n_jobs, random_seed)
-        _ = self._get_empirical(n_jobs, random_seed)
+            self._get_posterior(n_jobs, random_seed)
+        self._get_empirical(n_jobs, random_seed)
 
     @staticmethod
-    def _fit_nearest_neighbors(x):
+    def _fit_nearest_neighbors(
+            x: np.ndarray
+    ) -> sklearn.neighbors.NearestNeighbors:
         return sklearn.neighbors.NearestNeighbors().fit(x)
 
     @staticmethod
-    def _nearest_neighbor_search(nn, query, n_neighbors):
+    def _nearest_neighbor_search(
+            nn: sklearn.neighbors.NearestNeighbors,
+            query: np.ndarray, n_neighbors: int
+    ) -> np.ndarray:
         return nn.kneighbors(query, n_neighbors=n_neighbors)[1]
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def _nearest_neighbor_merge(x):  # pragma: no cover
+    def _nearest_neighbor_merge(x: np.ndarray) -> np.ndarray:  # pragma: no cover
         return np.unique(x)
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def _empirical_pvalue(hits, dist, cluster, empirical):  # pragma: no cover
-        """
+    def _empirical_pvalue(
+            hits: np.ndarray, dist: np.ndarray,
+            cluster: np.ndarray, empirical: np.ndarray
+    ) -> np.ndarray:  # pragma: no cover
+        r"""
         hits : n_hits
         dist : n_hits * n_models
         cluster : n_cells * n_models
@@ -597,16 +652,16 @@ class BLAST(object):
                 ) / empirical[i].shape[1]
         return pval
 
-    def save(self, path, only_used_genes=True):
-        """
+    def save(self, path: str, only_used_genes: bool = True) -> None:
+        r"""
         Save BLAST object to a directory.
 
         Parameters
         ----------
-        path : str
+        path
             Specifies a path to save the BLAST object.
-        only_used_genes : bool
-            Whether to preserve only the genes used by models, by default True.
+        only_used_genes
+            Whether to preserve only the genes used by models.
         """
         if not os.path.exists(path):
             os.makedirs(path)
@@ -634,36 +689,32 @@ class BLAST(object):
             ref.uns["posterior"] = {str(i): item for i, item in enumerate(self.posterior) if item is not None}
             ref.write_dataset(os.path.join(path, "ref.h5"))
         for i in range(len(self)):
-            self.models[i].save(os.path.join(path, "model_%d" % i))
+            self.models[i].save(os.path.join(path, f"model_{i}"))
 
     @classmethod
-    def load(cls, path, mode=NORMAL, verbose=1, **kwargs):
-        """
+    def load(cls, path: str, mode: int = NORMAL, **kwargs):
+        r"""
         Load BLAST object from a directory.
 
         Parameters
         ----------
-        path : str
+        path
             Specifies a path to load from.
-        mode : {cb.blast.NORMAL, cb.blast.MINIMAL}
+        mode
             If mode is set to MINIMAL, model loading will be accelerated by only
             loading the encoders, but aligning BLAST (fine-tuning) would not be
-            available.
-        verbose : int
-            Controls model loading verbosity, by default 1.
-            Check ``Cell_BLAST.model.Model`` for details.
+            available. Should be among {cb.blast.NORMAL, cb.blast.MINIMAL}
 
         Returns
         -------
-        blast : Cell_BLAST.blast.BLAST
+        blast
             Loaded BLAST object.
         """
         assert mode in (NORMAL, MINIMAL)
         ref = data.ExprDataSet.read_dataset(os.path.join(path, "ref.h5"))
         models = []
         for model_path in sorted(glob.glob(os.path.join(path, "model_*"))):
-            models.append(directi.DIRECTi.load(
-                model_path, _mode=mode, verbose=verbose))
+            models.append(directi.DIRECTi.load(model_path, _mode=mode))
         blast = cls(
             models, ref, ref.uns["distance_metric"], ref.uns["n_posterior"],
             ref.uns["n_empirical"], ref.uns["cluster_empirical"],
@@ -681,44 +732,50 @@ class BLAST(object):
         blast._force_components(**kwargs)
         return blast
 
-    def query(self, query, n_neighbors=5, n_jobs=config._USE_GLOBAL,
-              random_seed=config._USE_GLOBAL):
-        """
+    def query(
+            self, query: data.ExprDataSet, n_neighbors: int = 5,
+            store_dataset: bool = False,
+            n_jobs: int = config._USE_GLOBAL,
+            random_seed: int = config._USE_GLOBAL
+    ) -> "Hits":
+        r"""
         BLAST query
 
         Parameters
         ----------
-        query : Cell_BLAST.data.ExprDataSet
+        query
             Query transcriptomes.
-        n_neighbors : int
-            Initial number of nearest neighbors to search in each model,
-            by default 5.
-        n_jobs : int
+        n_neighbors
+            Initial number of nearest neighbors to search in each model.
+        store_dataset
+            Whether to store query dataset in the returned hit object.
+            Note that this is necessary if :meth:`Hits.gene_deviation`
+            is to be used.
+        n_jobs
             Number of parallel jobs to run when performing query. If not
-            specified, ``Cell_BLAST.config.N_JOBS`` will be used, which defaults
-            to 1. Note that each (tensorflow) job could be distributed on
-            multiple CPUs for a single "job".
-        random_seed : None
+            specified, :data:`config.N_JOBS` will be used.
+            Note that each (tensorflow) job could be distributed on multiple
+            CPUs for a single "job".
+        random_seed
             Random seed for posterior sampling. If not specified,
-            ``Cell_BLAST.utils.RANDOM_SEED`` will be used,
-            which defaults to None.
+            :data:`utils.RANDOM_SEED` will be used.
 
         Returns
         -------
-        hits : Cell_BLAST.blast.Hits
+        hits
             Query hits
         """
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
         random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
 
-        message.info("Projecting to latent space...")
+        utils.logger.info("Projecting to latent space...")
         query_latent = joblib.Parallel(
             n_jobs=min(n_jobs, len(self)), backend="threading"
         )(joblib.delayed(model.inference)(
             query
         ) for model in self.models)  # n_models * [n_cells * latent_dim]
 
-        message.info("Doing nearest neighbor search...")
+        utils.logger.info("Doing nearest neighbor search...")
         nearest_neighbors = self._get_nearest_neighbors(n_jobs)
         nni = np.stack(joblib.Parallel(
             n_jobs=min(n_jobs, len(self)), backend="threading"
@@ -728,7 +785,7 @@ class BLAST(object):
             nearest_neighbors, query_latent
         )), axis=2)  # n_cells * n_neighbors * n_models
 
-        message.info("Merging hits across models...")
+        utils.logger.info("Merging hits across models...")
         hits = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
             joblib.delayed(self._nearest_neighbor_merge)(_nni) for _nni in nni
         )  # n_cells * [n_hits]
@@ -738,14 +795,14 @@ class BLAST(object):
         query_latent = np.stack(query_latent, axis=1)  # n_cell * n_model * latent_dim
         ref_latent = self._get_latent(n_jobs)  # n_cell * n_model * latent_dim
         if self.distance_metric is ed:
-            message.info("Computing Euclidean distances...")
+            utils.logger.info("Computing Euclidean distances...")
             dist = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
                 joblib.delayed(_hit_ed_across_models)(
                     query_latent[i], ref_latent[hits[i]]
                 ) for i in range(len(hits))
             )  # list of n_hits * n_models
         else:
-            message.info("Computing posterior distribution distances...")
+            utils.logger.info("Computing posterior distribution distances...")
             query_posterior = np.stack(joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="threading"
             )(joblib.delayed(model.inference)(
@@ -763,7 +820,7 @@ class BLAST(object):
                 ) for i in range(len(hits))
             )  # list of n_hits * n_models
 
-        message.info("Computing empirical p-values...")
+        utils.logger.info("Computing empirical p-values...")
         empirical = self._get_empirical(n_jobs, random_seed)
         cluster = self._get_cluster(n_jobs)
         pval = joblib.Parallel(
@@ -772,50 +829,61 @@ class BLAST(object):
             _hits, _dist, cluster, empirical
         ) for _hits, _dist in zip(hits, dist))  # list of n_hits * n_models
 
-        return Hits(self.ref, hits, dist, pval, query.obs_names)
+        return Hits(
+            self, hits, dist, pval,
+            query if store_dataset else data.ExprDataSet(
+                scipy.sparse.csr_matrix((query.shape[0], 0)),
+                obs=pd.DataFrame(index=query.obs.index),
+                var=pd.DataFrame(), uns={}
+            )
+        )
 
-    def align(self, query, n_jobs=config._USE_GLOBAL,
-              random_seed=config._USE_GLOBAL, path=".", **kwargs):
-        """
+    def align(
+            self, query: typing.Union[
+                data.ExprDataSet, typing.Mapping[str, data.ExprDataSet]
+            ], n_jobs: int = config._USE_GLOBAL,
+            random_seed: int = config._USE_GLOBAL,
+            path: typing.Optional[str] = None, **kwargs
+    ) -> "BLAST":
+        r"""
         Align internal DIRECTi models with query datasets (fine tuning).
 
         Parameters
         ----------
-        query : Cell_BLAST.data.ExprDataSet, dict
+        query
             A query dataset or a dict of query datasets, which will be aligned
             to the reference.
-        n_jobs : int
+        n_jobs
             Number of parallel jobs to run when building the BLAST index,
-            If not specified, ``Cell_BLAST.config.N_JOBS`` will be used,
-            which defaults to 1. Note that each (tensorflow) job could be
-            distributed on multiple CPUs for a single "job".
-        random_seed : int
+            If not specified, :data:`config.N_JOBS` will be used.
+            Note that each (tensorflow) job could be distributed on multiple
+            CPUs for a single "job".
+        random_seed
             Random seed for posterior sampling. If not specified,
-            ``Cell_BLAST.config.RANDOM_SEED`` will be used,
-            which defaults to None.
-        path : str
-            Specifies a path to store temporary files, by default ".",
-            i.e. the current directory.
-        **kwargs
+            :data:`config.RANDOM_SEED` will be used.
+        path
+            Specifies a path to store temporary files.
+        kwargs
             Additional keyword parameters passed to
-            ``Cell_BLAST.directi.align_DIRECTi``.
+            :meth:`directi.align_DIRECTi`.
 
         Returns
         -------
-        blast : Cell_BLAST.blast.BLAST
+        blast
             A new BLAST object with aligned internal models.
         """
         if any(model._mode == directi._TEST for model in self.models):  # pragma: no cover
             raise Exception("Align not available!")
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
         random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        path = path or tempfile.mkdtemp()
 
         aligned_models = joblib.Parallel(
             n_jobs=n_jobs, backend="threading"
         )(
             joblib.delayed(directi.align_DIRECTi)(
                 self.models[i], self.ref, query, random_seed=random_seed,
-                path=os.path.join(path, "aligned_model_%d" % i), **kwargs
+                path=os.path.join(path, f"aligned_model_{i}"), **kwargs
             ) for i in range(len(self))
         )
         return BLAST(
@@ -827,99 +895,118 @@ class BLAST(object):
 
 class Hits(object):
 
-    """
+    r"""
     BLAST hits
 
     Parameters
     ----------
-    ref : Cell_BLAST.data.ExprDataSet
+    ref
         The reference dataset.
-    hits : list
+    hits
         Indices of hit cell in the reference dataset.
         Each list element contains hit cell indices for a query cell.
-    dist : list
+    dist
         Hit cell distances.
         Each list element contains distances for a query cell.
-        Each list element is a :math:`n\\_hits \\times n\\_models` matrix,
+        Each list element is a :math:`n\_hits \times n\_models` matrix,
         with matrix entries corresponding to the distance to
         each hit cell under each model.
-    pval : list
+    pval
         Hit cell empirical p-values.
         Each list element contains p-values for a query cell.
-        Each list element is a :math:`n\\_hits \\times n\\_models` matrix,
+        Each list element is a :math:`n\_hits \times n\_models` matrix,
         with matrix entries corresponding to the empirical p-value of
         each hit cell under each model.
-    names : array_like
+    names
         Query cell names.
     """
 
     FILTER_BY_DIST = 0
     FILTER_BY_PVAL = 1
 
-    def __init__(self, ref, hits, dist, pval, names):
-        self.ref = ref
+    def __init__(
+            self, blast: BLAST,
+            hits: typing.List[np.ndarray],
+            dist: typing.List[np.ndarray],
+            pval: typing.List[np.ndarray],
+            query: data.ExprDataSet
+    ) -> None:
+        self.blast = blast
         self.hits = np.array(hits)
         self.dist = np.array(dist)
         self.pval = np.array(pval)
-        self.names = np.array(names)
+        self.query = query
+        if not self.hits.shape[0] == self.dist.shape[0] == \
+                self.pval.shape[0] == self.query.shape[0]:
+            raise ValueError("Inconsistent shape!")
 
-    def __len__(self):
-        return len(self.names)
+    def __len__(self) -> int:
+        return self.query.shape[0]
 
     def __iter__(self):
-        for _hits, _dist, _pval, _name in zip(self.hits, self.dist, self.pval, self.names):
-            yield Hits(self.ref, [_hits], [_dist], [_pval], [_name])
+        for idx, (_hits, _dist, _pval) in enumerate(zip(self.hits, self.dist, self.pval)):
+            yield Hits(self.blast, [_hits], [_dist], [_pval], self.query[idx, :])
 
     def __getitem__(self, s):
-        return Hits(self.ref, self.hits[s], self.dist[s], self.pval[s], self.names[s])
+        s = [s] if isinstance(s, (int, np.integer)) else s
+        return Hits(
+            self.blast, self.hits[s], self.dist[s], self.pval[s],
+            self.query[s, :]
+        )
 
-    def to_data_frames(self):
-        """
+    def to_data_frames(self) -> typing.Mapping[str, pd.DataFrame]:
+        r"""
         Construct hit data frames for query cells.
         Note that only reconciled ``Hits`` objects are supported.
 
         Returns
         -------
-        data_frame_dicts : list
+        data_frame_dicts
             Each element is hit data frame for a cell
         """
-        assert self.dist[0].ndim == 1 and self.pval[0].ndim == 1  # "reconcile_models" has been called
+        if self.dist[0].ndim != 1 or self.pval[0].ndim != 1:
+            raise RuntimeError("Please call `reconcile_models` first!")
         df_dict = collections.OrderedDict()
-        for i, name in enumerate(self.names):
-            df_dict[name] = self.ref.obs.iloc[self.hits[i], :]
-            df_dict[name]["hits"] = self.hits[i]
-            df_dict[name]["dist"] = self.dist[i]
-            df_dict[name]["pval"] = self.pval[i]
+        for i, name in enumerate(self.query.obs_names):
+            df_dict[name] = self.blast.ref.obs.iloc[self.hits[i], :].copy()
+            df_dict[name].loc[:, "hits"] = self.hits[i]
+            df_dict[name].loc[:, "dist"] = self.dist[i]
+            df_dict[name].loc[:, "pval"] = self.pval[i]
         return df_dict
 
-    def reconcile_models(self, dist_method="mean", pval_method="gmean"):
-        """
+    def reconcile_models(
+            self, dist_method: str = "mean", pval_method: str = "gmean"
+    ) -> "Hits":
+        r"""
         Integrate model-specific distances and empirical p-values.
 
         Parameters
         ----------
-        dist_method : {"mean", "gmean", "min", "max"}
-            Specifies how to integrate distances across difference models,
-            by default "mean".
-        pval_method : {"mean", "gmean", "min", "max"}
-            Specifies how to integrate empirical p-values across
-            different models, by default "gmean".
+        dist_method
+            Specifies how to integrate distances across difference models.
+            Should be among {"mean", "gmean", "min", "max"}.
+        pval_method
+            Specifies how to integrate empirical p-values across different
+            models. Should be among {"mean", "gmean", "min", "max"}.
 
         Returns
         -------
-        reconciled_hits : Cell_BLAST.blast.Hits
+        reconciled_hits
             Hit object containing reconciled
         """
         dist_method = self._get_reconcile_method(dist_method)
         dist = [dist_method(item, axis=1) for item in self.dist]
         pval_method = self._get_reconcile_method(pval_method)
         pval = [pval_method(item, axis=1) for item in self.pval]
-        return Hits(self.ref, self.hits, dist, pval, self.names)
+        return Hits(self.blast, self.hits, dist, pval, self.query)
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def _filter_hits(hits, dist, pval, by, cutoff, model_tolerance):  # pragma: no cover
-        """
+    def _filter_hits(
+            hits: np.ndarray, dist: np.ndarray, pval: np.ndarray,
+            by: int, cutoff: float, model_tolerance: int
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:  # pragma: no cover
+        r"""
         hits : n_hits
         dist : n_hits * n_models
         pval : n_hits * n_models
@@ -932,8 +1019,11 @@ class Hits(object):
 
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
-    def _filter_reconciled_hits(hits, dist, pval, by, cutoff):  # pragma: no cover
-        """
+    def _filter_reconciled_hits(
+            hits: np.ndarray, dist: np.ndarray, pval: np.ndarray,
+            by: int, cutoff: float
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:  # pragma: no cover
+        r"""
         hits : n_hits
         dist : n_hits
         pval : n_hits
@@ -944,26 +1034,30 @@ class Hits(object):
             hit_mask = pval <= cutoff
         return hits[hit_mask], dist[hit_mask], pval[hit_mask]
 
-    def filter(self, by="pval", cutoff=0.05, model_tolerance=0, n_jobs=1):
-        """
+    def filter(
+            self, by: str = "pval", cutoff: float = 0.05,
+            model_tolerance: int = 0, n_jobs: int = 1
+    ) -> "Hits":
+        r"""
         Filter hits by posterior distance or p-value
 
         Parameters
         ----------
-        by : {"dist", "pval"}
-            Specifies a metric based on which to filter hits, by default "pval".
-        cutoff : float
-            Cutoff when filtering hits, by default 0.05.
-        model_tolerance : int
+        by
+            Specifies a metric based on which to filter hits.
+            Should be among {"dist", "pval"}.
+        cutoff
+            Cutoff when filtering hits.
+        model_tolerance
             Maximal number of models allowed in which the cutoff is not
-            satisfied, above which the query cell will be rejected,
-            by default 0. Irrelevant for reconciled hits.
-        n_jobs : int
-            Number of parallel jobs to run, by default 1.
+            satisfied, above which the query cell will be rejected.
+            Irrelevant for reconciled hits.
+        n_jobs
+            Number of parallel jobs to run.
 
         Returns
         -------
-        filtered_hits : Cell_BLAST.blast.Hits
+        filtered_hits
             Hit object containing remaining hits after filtering
         """
         if by == "pval":
@@ -976,18 +1070,26 @@ class Hits(object):
                 n_jobs=n_jobs, backend="threading"
             )(joblib.delayed(self._filter_reconciled_hits)(
                 _hits, _dist, _pval, by, cutoff
-            ) for _hits, _dist, _pval in zip(self.hits, self.dist, self.pval)))]
+            ) for _hits, _dist, _pval in zip(
+                self.hits, self.dist, self.pval
+            )))]
         else:
             hits, dist, pval = [_ for _ in zip(*joblib.Parallel(
                 n_jobs=n_jobs, backend="threading"
             )(joblib.delayed(self._filter_hits)(
                 _hits, _dist, _pval, by, cutoff, model_tolerance
-            ) for _hits, _dist, _pval in zip(self.hits, self.dist, self.pval)))]
-        return Hits(self.ref, hits, dist, pval, self.names)
+            ) for _hits, _dist, _pval in zip(
+                self.hits, self.dist, self.pval
+            )))]
+        return Hits(self.blast, hits, dist, pval, self.query)
 
-    def annotate(self, field, min_hits=2, majority_threshold=0.5, return_evidence=False):
-        """
-        Annotate query cells based on existing annotations of hit cells.
+    def annotate(
+            self, field: str, min_hits: int = 2,
+            majority_threshold: float = 0.5, return_evidence: bool = False
+    ) -> pd.DataFrame:
+        r"""
+        Annotate query cells based on existing annotations of hit cells
+        via majority voting.
         Fields in the meta data or gene expression values can all be specified
         for annotation / prediction. Note that for gene expression, predicted
         values are in log-scale, and user should do proper normalization
@@ -995,22 +1097,22 @@ class Hits(object):
 
         Parameters
         ----------
-        field : str
+        field
             Specifies a meta column or gene name to use for annotation.
-        min_hits : int
+        min_hits
             Minimal number of hits required for annotating a query cell,
-            otherwise the query cell will be rejected, by default 2.
-        majority_threshold : float
+            otherwise the query cell will be rejected.
+        majority_threshold
             Minimal majority fraction (not inclusive) required for confident
-            annotation, by default 0.5. Only effective when predicting
+            annotation. Only effective when predicting
             categorical variables. If the threshold is not met, annotation
             will be "ambiguous".
-        return_evidence : bool
+        return_evidence
             Whether to return evidence level of the annotations.
 
         Returns
         -------
-        prediction : pandas.DataFrame
+        prediction
             Each row contains the inferred annotation for a query cell.
             If ``return_evidence`` is set to False, the data frame contains only
             one column, i.e. the inferred annotation.
@@ -1018,19 +1120,23 @@ class Hits(object):
             the number of hits, as well as the majority fraction (only for
             categorical annotations) for each query cell.
         """
-        ref = self.ref.get_meta_or_var([field], normalize_var=False, log_var=True).values.ravel()
+        ref = self.blast.ref.get_meta_or_var(
+            [field], normalize_var=False, log_var=True
+        ).values.ravel()
         n_hits = np.repeat(0, len(self.hits))
-        if np.issubdtype(ref.dtype.type, np.character) or np.issubdtype(ref.dtype.type, np.object_):
+        if np.issubdtype(ref.dtype.type, np.character) or \
+                np.issubdtype(ref.dtype.type, np.object_):
             prediction = np.repeat("rejected", len(self.hits)).astype(object)
             majority_frac = np.repeat(np.nan, len(self.hits))
             for i, _hits in enumerate(self.hits):
-                n_hits[i] = len(_hits)
+                hits = ref[_hits]
+                hits = hits[~utils.isnan(hits)] if hits.size else hits
+                n_hits[i] = hits.size
                 if n_hits[i] < min_hits:
                     continue
-                hits = ref[_hits]
                 label, count = np.unique(hits, return_counts=True)
                 best_idx = count.argmax()
-                majority_frac[i] = count[best_idx] / len(hits)
+                majority_frac[i] = count[best_idx] / hits.size
                 if majority_frac[i] <= majority_threshold:
                     prediction[i] = "ambiguous"
                     continue
@@ -1039,10 +1145,12 @@ class Hits(object):
         elif np.issubdtype(ref.dtype.type, np.number):
             prediction = np.repeat(np.nan, len(self.hits))
             for i, _hits in enumerate(self.hits):
-                n_hits[i] = len(_hits)
+                hits = ref[_hits]
+                hits = hits[~utils.isnan(hits)] if hits.size else hits
+                n_hits[i] = hits.size
                 if n_hits[i] < min_hits:
                     continue
-                prediction[i] = ref[_hits].mean()
+                prediction[i] = hits.mean()
                 # np.array call is for 1-d mean that produces 0-d values
             prediction = np.stack(prediction, axis=0)
         else:  # pragma: no cover
@@ -1053,10 +1161,64 @@ class Hits(object):
             result["n_hits"] = n_hits
             if "majority_frac" in locals():
                 result["majority_frac"] = majority_frac
-        return pd.DataFrame(result, index=self.names)
+        return pd.DataFrame(result, index=self.query.obs_names)
+
+    def blast2co(
+            self, cl_dag: utils.CellTypeDAG,
+            cl_field: str = "cell_ontology_class",
+            min_hits: int = 2, thresh: float = 0.5, min_path: int = 4
+    ) -> pd.DataFrame:
+        r"""
+        Annotate query cells based on existing annotations of hit cells
+        via the cell-ontology-aware BLAST2CO method.
+
+        Parameters
+        ----------
+        cl_dag
+            Cell ontology DAG
+        cl_field
+            Specify the ``obs`` column containing cell ontology annotation
+            in the reference dataset
+        min_hits
+            Minimal number of hits required for annotating a query cell,
+            otherwise the query cell will be rejected.
+        thresh
+            Scoring threshold based on 1 - pvalue.
+        min_path
+            Minimal allowed value of the maximal distance to root
+            for a prediction to be made.
+
+        Returns
+        -------
+        prediction
+            Each row contains the inferred annotation for a query cell.
+        """
+        if self.dist[0].ndim != 1 or self.pval[0].ndim != 1:
+            raise RuntimeError("Please call `reconcile_models` first!")
+        prediction = np.repeat("rejected", len(self.hits)).astype(object)
+        ref = self.blast.ref.get_meta_or_var([cl_field]).values.ravel()
+        for i, (_hits, _pval) in enumerate(zip(self.hits, self.pval)):
+            hits = ref[_hits]
+            if hits.size:
+                mask = ~utils.isnan(hits)
+                hits = hits[mask]
+                _pval = _pval[mask]
+            if hits.size < min_hits:
+                continue
+            cl_dag.value_reset()
+            for cl in np.unique(hits):  # 1 - pval
+                cl_dag.value_set(cl, np.sum(1 - _pval[hits == cl]) / np.sum(1 - _pval))
+            cl_dag.value_update()
+            leaves = cl_dag.best_leaves(
+                thresh=thresh, min_path=min_path, retrieve=cl_field)
+            if len(leaves) == 1:
+                prediction[i] = leaves[0]
+            elif len(leaves) > 1:
+                prediction[i] = "ambiguous"
+        return pd.DataFrame({cl_field: prediction}, index=self.query.obs_names)
 
     @staticmethod
-    def _get_reconcile_method(method):
+    def _get_reconcile_method(method: str):
         if method == "mean":
             return np.mean
         if method == "gmean":
@@ -1067,39 +1229,140 @@ class Hits(object):
             return np.max
         raise ValueError("Unknown method!")  # pragma: no cover
 
+    def gene_gradient(
+            self, eval_point: str = "query", normalize_deviation: bool = True,
+            avg_models: bool = True, n_jobs: int = config._USE_GLOBAL
+    ) -> typing.List[np.ndarray]:
+        r"""
+        Compute gene-wise gradient for each pair of query-hit cells
+        based on query-hit deviation in the latent space. Useful for model
+        interpretation.
 
-def sankey(query, ref, title="Sankey", width=500, height=500, tint_cutoff=1,
-           font="Arial", font_size=10, suppress_plot=False):  # pragma: no cover
-    """
+        Parameters
+        ----------
+        eval_point
+            At which point should the gradient be evaluated.
+            Valid options include: {"query", "ref", "both"}
+        normalize_deviation
+            Whether to normalize query-hit deivation in the latent space.
+        avg_models
+            Whether to average gene-wise gradients across different models
+        n_jobs
+            Number of parallel jobs to run when performing query. If not
+            specified, :data:`config.N_JOBS` will be used.
+            Note that each (tensorflow) job could be distributed on multiple
+            CPUs for a single "job".
+
+        Returns
+        -------
+        gene_gradient
+            A list with length equal to the number of query cells, where each
+            element is a :class:`np.ndarray` containing gene-wise gradient for
+            every hit cell of a query cell. The :class:`np.ndarray`s are of
+            shape :math:`n\_hits \times n\_genes` if ``avg_models`` is set to
+            True, or :math:`n\_hits \times n\_models \times n\_genes` if
+            ``avg_models`` is set to False.
+        """
+        n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
+        if self.query.shape[1] == 0:
+            raise RuntimeError(
+                "No query data available! Please set \"store_dataset\" to True "
+                "when calling BLAST.query()"
+            )
+
+        ref_idx = np.concatenate(self.hits)
+        query_idx = np.concatenate([
+            idx * np.ones_like(_hits)
+            for idx, _hits in enumerate(self.hits)
+        ])
+        ref = self.blast.ref[ref_idx, :]
+        query = self.query[query_idx, :]
+
+        query_latent = joblib.Parallel(
+            n_jobs=min(n_jobs, len(self)), backend="threading"
+        )(joblib.delayed(model.inference)(
+            self.query
+        ) for model in self.blast.models)
+        query_latent = np.stack(query_latent)[:, query_idx, :]  # n_models * sum(n_hits) * latent_dim
+
+        ref_latent = self.blast._get_latent(n_jobs)  # n_cells * n_models * latent_dim
+        ref_latent = ref_latent[ref_idx].swapaxes(0, 1)  # n_models * sum(n_hits) * latent_dim
+
+        deviation = query_latent - ref_latent  # n_models * sum(n_hits) * latent_dim
+        if normalize_deviation:
+            deviation /= np.linalg.norm(deviation, axis=2, keepdims=True)
+
+        # TODO: We can do some sort of interpolation here to further improve
+        # reliability of the results?
+
+        if eval_point in ("ref", "both"):
+            gene_dev_ref = joblib.Parallel(
+                n_jobs=n_jobs, backend="threading"
+            )(joblib.delayed(model.gene_grad)(
+                ref, latent_grad=_deviation
+            ) for model, _deviation in zip(
+                self.blast.models, deviation
+            ))  # n_models * [sum(n_hits) * n_genes]
+            gene_dev_ref = np.stack(gene_dev_ref, axis=1)  # sum(n_hits) * n_models * n_genes
+        if eval_point in ("query", "both"):
+            gene_dev_query = joblib.Parallel(
+                n_jobs=n_jobs, backend="threading"
+            )(joblib.delayed(model.gene_grad)(
+                query, latent_grad=_deviation
+            ) for model, _deviation in zip(
+                self.blast.models, deviation
+            ))  # n_models * [sum(n_hits) * n_genes]
+            gene_dev_query = np.stack(gene_dev_query, axis=1)  # sum(n_hits) * n_models * n_genes
+
+        if eval_point == "ref":
+            gene_dev = gene_dev_ref
+        elif eval_point == "query":
+            gene_dev = gene_dev_query
+        else:  # eval_point == "both"
+            gene_dev = (gene_dev_ref + gene_dev_query) / 2
+
+        if avg_models:
+            gene_dev = np.mean(gene_dev, axis=1)
+
+        split_idx = np.cumsum([_hits.size for _hits in self.hits])[:-1]
+        gene_dev = np.split(gene_dev, split_idx)  # n_queries * [n_hits * <n_models> * n_genes]
+        return gene_dev
+
+
+def sankey(
+        query: np.ndarray, ref: np.ndarray, title: str = "Sankey",
+        width: int = 500, height: int = 500, tint_cutoff: int = 1,
+        font: str = "Arial", font_size: float = 10.0,
+        suppress_plot: bool = False
+) -> dict:  # pragma: no cover
+    r"""
     Make a sankey diagram of query-reference mapping (only works in
     ipython notebooks).
 
     Parameters
     ----------
-    query : array_like
+    query
         1-dimensional array of query annotation.
-    ref : array_like
+    ref
         1-dimensional array of BLAST prediction based on reference database.
-    title : str
-        Diagram title, by default "Sankey".
-    width : int
-        Graph width, by default 500.
-    height : int
-        Graph height, by default 500.
-    tint_cutoff : int
-        Cutoff below which sankey flows are shown in a tinter color,
-        by default 1.
-    font : str
-        Font family used for the plot, by default "Arial".
-    font_size : float
-        Font size for the plot, by default 10.
-    suppress_plot : bool
-        Whether to suppress plotting and only return the figure dict,
-        by default False.
+    title
+        Diagram title.
+    width
+        Graph width.
+    height
+        Graph height.
+    tint_cutoff
+        Cutoff below which sankey flows are shown in a tinter color.
+    font
+        Font family used for the plot.
+    font_size
+        Font size for the plot.
+    suppress_plot
+        Whether to suppress plotting and only return the figure dict.
 
     Returns
     -------
-    fig : dict
+    fig
         Figure object fed to `iplot` of the `plotly` module to produce the plot.
     """
     cf = metrics.confusion_matrix(query, ref)
@@ -1123,7 +1386,7 @@ def sankey(query, ref, title="Sankey", width=500, height=500, tint_cutoff=1,
                 query_c, ref_c
             ], axis=0),
             color=["#E64B35"] * len(query_c) +
-                  ["#4EBBD5"] * len(ref_c)
+            ["#4EBBD5"] * len(ref_c)
         ),
         link=dict(
             source=query_i.tolist(),

@@ -40,12 +40,12 @@ def _fit_nearest_neighbors(x):
 
 def main(cmd_args):
 
-    cb.message.info("Loading index...")
+    cb.utils.logger.info("Loading index...")
     os.environ["CUDA_VISIBLE_DEVICES"] = utils.pick_gpu_lowest_memory() \
         if cmd_args.device is None else cmd_args.device
     blast = cb.blast.BLAST.load(cmd_args.index)
     if cmd_args.subsample_ref is not None:
-        cb.message.info("Subsampling reference...")
+        cb.utils.logger.info("Subsampling reference...")
         subsample_idx = np.random.RandomState(cmd_args.seed).choice(
             blast.ref.shape[0], cmd_args.subsample_ref, replace=False)
         blast.ref = blast.ref[subsample_idx, :]
@@ -56,18 +56,18 @@ def main(cmd_args):
         blast.empirical = None
         blast._force_components()
 
-    cb.message.info("Reading query...")
+    cb.utils.logger.info("Reading query...")
     query = cb.data.ExprDataSet.read_dataset(cmd_args.query)
     if cmd_args.clean:
         query = utils.clean_dataset(query, cmd_args.clean)
 
     if cmd_args.align:
-        cb.message.info("Aligning...")
+        cb.utils.logger.info("Aligning...")
         unipath = "/tmp/cb/" + cb.utils.rand_hex()
-        cb.message.info("Using temporary path: " + unipath)
+        cb.utils.logger.info("Using temporary path: " + unipath)
         blast = blast.align(query, path=unipath)
 
-    cb.message.info("BLASTing...")
+    cb.utils.logger.info("BLASTing...")
     start_time = time.time()
     hits = blast.query(
         query, n_neighbors=cmd_args.n_neighbors
@@ -87,7 +87,7 @@ def main(cmd_args):
             ) * 1000 / len(prediction_dict[cutoff])
     print("Time per cell: %.3fms" % time_per_cell)
 
-    cb.message.info("Saving result...")
+    cb.utils.logger.info("Saving result...")
     if os.path.exists(cmd_args.output):
         os.remove(cmd_args.output)
     for cutoff in prediction_dict:

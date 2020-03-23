@@ -24,7 +24,7 @@ parser.add_argument("--clean", dest="clean", type=str, default=None)
 cmd_args = parser.parse_args()
 
 # Read data
-cb.message.info("Reading data...")
+print("Reading data...")
 x = cb.data.ExprDataSet.read_dataset(cmd_args.input).normalize()
 if cmd_args.clean:
     x = utils.clean_dataset(x, cmd_args.clean)
@@ -45,4 +45,4 @@ elapsed_time = time.time() - start_time
 cb.data.write_hybrid_path(z, "%s//latent" % cmd_args.output)
 cb.data.write_hybrid_path(elapsed_time, "%s//time" % cmd_args.output)
 
-cb.message.info("Done!")
+print("Done!")

@@ -1,26 +1,32 @@
-"""
+r"""
 Batch effect removing modules for DIRECTi
 """
 
+import typing
 
+import numpy as np
 import tensorflow as tf
-from . import nn
-from . import module
-from . import utils
+
+from . import module, nn, utils
 
 
 class RMBatch(module.Module):
-    """
+    r"""
     Parent class for systematical bias / batch effect removal modules.
     """
-    def __init__(self, batch_dim, delay=20, name="RMBatch"):
+    def __init__(
+            self, batch_dim: int, delay: int = 20, name: str = "RMBatch"
+    ) -> None:
         super(RMBatch, self).__init__(name=name)
         self.batch_dim = batch_dim
         self.delay = delay
         if self._delay_guard not in self.on_epoch_end:
             self.on_epoch_end.append(self._delay_guard)
 
-    def _build_regularizer(self, input_tensor, training_flag, epoch, scope=""):
+    def _build_regularizer(  # pylint: disable=unused-argument
+            self, input_tensor: tf.Tensor, training_flag: tf.Tensor,
+            epoch: tf.Tensor, scope: str = ""
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.batch = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.batch_dim),
@@ -28,49 +34,57 @@ class RMBatch(module.Module):
             )
         return 0.0
 
-    def _build_feed_dict(self, data_dict):
+    def _build_feed_dict(self, data_dict: utils.DataDict) -> typing.Mapping:
         return {
             self.batch: utils.densify(data_dict[self.name])
         } if self.name in data_dict else {}
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return True
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "batch_dim": self.batch_dim,
             "delay": self.delay,
             **super(RMBatch, self)._get_config()
         }
 
-    def _delay_guard(self, model, train_data_dict, val_data_dict, loss):
+    def _delay_guard(  # pylint: disable=unused-argument
+            self, model: "directi.DIRECTi",
+            train_data_dict: utils.DataDict,
+            val_data_dict: utils.DataDict,
+            loss: tf.Tensor
+    ) -> bool:
         _epoch = model.sess.run(model.epoch)
         return _epoch >= self.delay
 
 
 class Adversarial(RMBatch):
-    """
+    r"""
     Build a batch effect correction module that uses adversarial batch alignment.
 
     Parameters
     ----------
-    batch_dim : int
+    batch_dim
         Number of batches.
-    h_dim : int
-        Dimensionality of the hidden layers in the discriminator MLP, by default 128.
-    depth : int
-        Number of hidden layers in the discriminator MLP, by default 1.
-    dropout : float
-        Dropout rate, by default 0.0.
-    lambda_reg : float
-        Strength of batch effect correction, by default 0.01,
-    n_steps : int
-        How many discriminator steps to run for each encoder step, by default 1.
-    name : str
-        Name of the module, by default "AdvBatch".
+    h_dim
+        Dimensionality of the hidden layers in the discriminator MLP.
+    depth
+        Number of hidden layers in the discriminator MLP.
+    dropout
+        Dropout rate.
+    lambda_reg
+        Strength of batch effect correction,
+    n_steps
+        How many discriminator steps to run for each encoder step.
+    name
+        Name of the module.
     """
-    def __init__(self, batch_dim, h_dim=128, depth=1, dropout=0.0,
-                 lambda_reg=0.01, n_steps=1, delay=20, name="AdvBatch"):
+    def __init__(
+            self, batch_dim: int, h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.01,
+            n_steps: int = 1, delay: int = 20, name: str = "AdvBatch"
+    ) -> None:
         super(Adversarial, self).__init__(batch_dim, delay=delay, name=name)
         self.h_dim = h_dim
         self.depth = depth
@@ -78,21 +92,25 @@ class Adversarial(RMBatch):
         self.lambda_reg = lambda_reg
         self.n_steps = n_steps
 
-    def _build_regularizer(self, input_tensor, training_flag,
-                           epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, input_tensor: tf.Tensor, training_flag: tf.Tensor,
+            epoch: tf.Tensor, scope: str = "discriminator"
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.batch = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.batch_dim),
                 name=self.scope_safe_name
             )
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope):
             mask = tf.cast(tf.reduce_sum(self.batch, axis=1) > 0, tf.int32)
             batch = tf.dynamic_partition(self.batch, mask, 2)[1]
             input_tensor = tf.dynamic_partition(input_tensor, mask, 2)[1]
+            dropout = np.zeros(self.depth)
+            dropout[1:] = self.dropout  # No dropout for first layer
             batch_pred = tf.identity(nn.dense(nn.mlp(
                 input_tensor, [self.h_dim] * self.depth,
-                dropout=self.dropout, training_flag=training_flag
+                dropout=dropout.tolist(), training_flag=training_flag
             ), self.batch_dim), "batch_logit")
             self.batch_d_loss = tf.cast(
                 epoch >= self.delay, tf.float32
@@ -108,8 +126,8 @@ class Adversarial(RMBatch):
         tf.add_to_collection(tf.GraphKeys.LOSSES, self.batch_d_loss)
         return self.lambda_reg * self.batch_g_loss
 
-    def _compile(self, optimizer, lr):
-        with tf.variable_scope("optimize/%s" % self.scope_safe_name):
+    def _compile(self, optimizer: str, lr: float) -> None:
+        with tf.variable_scope(f"optimize/{self.scope_safe_name}"):
             optimizer = getattr(tf.train, optimizer)(lr)
             control_dependencies = []
             for _ in range(self.n_steps):
@@ -124,7 +142,7 @@ class Adversarial(RMBatch):
                     control_dependencies = [self.step]
             tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, self.step)
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "h_dim": self.h_dim,
             "depth": self.depth,
@@ -136,39 +154,41 @@ class Adversarial(RMBatch):
 
 
 class MNN(RMBatch):
-    """
+    r"""
     Build a batch effect correction module that uses mutual nearest neighbor
     (MNN) distance regularization.
 
     Parameters
     ----------
-    batch_dim : int
+    batch_dim
         Number of batches.
-    n_neighbors : int
+    n_neighbors
         Number of nearest neighbors to use when selecting mutual nearest
-        neighbors, by default 5.
-    lambda_reg : float
-        Strength of batch effect correction, by default 1.0,
-    delay : int
-        How many epoches to delay before using MNN batch correction,
-        by default 20.
-    name : str
-        Name of the module, by default "MNNBatch".
+        neighbors.
+    lambda_reg
+        Strength of batch effect correction.
+    delay
+        How many epoches to delay before using MNN batch correction.
+    name
+        Name of the module.
     """
     def __init__(
-        self, batch_dim, n_neighbors=5, lambda_reg=1.0,
-        delay=20, name="MNN"
-    ):
+            self, batch_dim: int, n_neighbors: int = 5,
+            lambda_reg: float = 1.0, delay: int = 20, name: str = "MNN"
+    ) -> None:
         super(MNN, self).__init__(batch_dim, delay=delay, name=name)
         self.n_neighbors = n_neighbors
         self.lambda_reg = lambda_reg
 
-    def _build_regularizer(self, input_tensor, training_flag, epoch, scope="MNN"):
+    def _build_regularizer(
+            self, input_tensor: tf.Tensor, training_flag: tf.Tensor,
+            epoch: tf.Tensor, scope: str = "MNN"
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.batch = tf.placeholder(dtype=tf.float32, shape=(
                 None, self.batch_dim
             ), name=self.scope_safe_name)
-        with tf.name_scope("%s/%s" % (scope, self.scope_safe_name)):
+        with tf.name_scope(f"{scope}/{self.scope_safe_name}"):
             batches = tf.dynamic_partition(
                 input_tensor,
                 partitions=tf.argmax(self.batch, axis=1, output_type=tf.int32),
@@ -188,26 +208,26 @@ class MNN(RMBatch):
                 epoch > self.delay, tf.float32
             ) * self.lambda_reg * tf.reduce_mean(penalties, name="MNN_loss")
 
-    def _cross_batch_penalty(self, x, y):  # MNN
+    def _cross_batch_penalty(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:  # MNN
         x1, y0 = tf.expand_dims(x, axis=1), tf.expand_dims(y, axis=0)
         xy_dist = tf.reduce_sum(tf.square(x1 - y0), axis=2)
         xy_mask = tf.cast(self._mnn_mask(xy_dist, self.n_neighbors), tf.float32)
         return tf.reshape(xy_dist * xy_mask, [-1])
 
     @staticmethod
-    def _neighbor_mask(d, k):
+    def _neighbor_mask(d: tf.Tensor, k: int) -> tf.Tensor:
         n = tf.shape(d)[1]
         _, idx = tf.nn.top_k(tf.negative(d), k=tf.minimum(k, n))
         return tf.cast(tf.reduce_sum(tf.one_hot(idx, depth=n), axis=1), tf.bool)
 
     @staticmethod
-    def _mnn_mask(d, k):
+    def _mnn_mask(d: tf.Tensor, k: int) -> tf.Tensor:
         return tf.logical_and(
             MNN._neighbor_mask(d, k),
             tf.transpose(MNN._neighbor_mask(tf.transpose(d), k))
         )
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "n_neighbors": self.n_neighbors,
             "lambda_reg": self.lambda_reg,
@@ -216,53 +236,54 @@ class MNN(RMBatch):
 
 
 class MNNAdversarial(Adversarial, MNN):
-    """
+    r"""
     Build a batch effect correction module that uses adversarial batch alignment
     among cells with mutual nearest neighbors.
 
     Parameters
     ----------
-    batch_dim : int
+    batch_dim
         Number of batches.
-    h_dim : int
-        Dimensionality of the hidden layers in the discriminator MLP, by default 128.
-    depth : int
-        Number of hidden layers in the discriminator MLP, by default 1.
-    dropout : float
-        Dropout rate, by default 0.0.
-    lambda_reg : float
-        Strength of batch effect correction, by default 0.01,
-    n_steps : int
-        How many discriminator steps to run for each encoder step, by default 1.
-    n_neighbors : int
+    h_dim
+        Dimensionality of the hidden layers in the discriminator MLP.
+    depth
+        Number of hidden layers in the discriminator MLP.
+    dropout
+        Dropout rate.
+    lambda_reg
+        Strength of batch effect correction.
+    n_steps
+        How many discriminator steps to run for each encoder step.
+    n_neighbors
         Number of nearest neighbors to use when selecting mutual nearest
-        neighbors, by default 5.
-    delay : int
-        How many epoches to delay before using MNN batch correction,
-        by default 20.
-    name : str
-        Name of the module, by default "MNNAdvBatch".
+        neighbors.
+    delay
+        How many epoches to delay before using MNN batch correction.
+    name
+        Name of the module.
     """
 
     def __init__(
-        self, batch_dim, h_dim=128, depth=1, dropout=0.0,
-        lambda_reg=0.01, n_steps=1, n_neighbors=5, delay=20,
-        name="MNNAdvBatch"
-    ):
+            self, batch_dim: int, h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.01, n_steps: int = 1,
+            n_neighbors: int = 5, delay: int = 20, name="MNNAdvBatch"
+    ) -> None:
         super(MNNAdversarial, self).__init__(
             batch_dim, h_dim, depth, dropout, lambda_reg, n_steps,
             delay=delay, name=name
         )  # Calls Adversarial.__init__
         self.n_neighbors = n_neighbors
 
-    def _build_regularizer(self, input_tensor, training_flag,
-                           epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, input_tensor: tf.Tensor, training_flag: tf.Tensor,
+            epoch: tf.Tensor, scope: str = "discriminator"
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.batch = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.batch_dim),
                 name=self.scope_safe_name
             )
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope):
             mask = tf.cast(tf.reduce_sum(self.batch, axis=1) > 0, tf.int32)
             batch = tf.dynamic_partition(self.batch, mask, 2)[1]
@@ -291,9 +312,11 @@ class MNNAdversarial(Adversarial, MNN):
                 tf.concat(include_idx, axis=0), tf.int32))[0]
             input_tensor = tf.gather(input_tensor, self.include_idx)
             batch = tf.gather(batch, self.include_idx)
+            dropout = np.zeros(self.depth)
+            dropout[1:] = self.dropout  # No dropout for first layer
             batch_pred = tf.identity(nn.dense(nn.mlp(
                 input_tensor, [self.h_dim] * self.depth,
-                dropout=self.dropout, training_flag=training_flag
+                dropout=dropout.tolist(), training_flag=training_flag
             ), self.batch_dim), "batch_logit")
             self.batch_d_loss = tf.multiply(tf.cast(
                 epoch >= self.delay, tf.float32
@@ -310,7 +333,11 @@ class MNNAdversarial(Adversarial, MNN):
         return self.lambda_reg * self.batch_g_loss
 
     @staticmethod
-    def _mnn_idx(batch1, batch2, k):
+    def _mnn_idx(
+            batch1: typing.Tuple[tf.Tensor, tf.Tensor],
+            batch2: typing.Tuple[tf.Tensor, tf.Tensor],
+            k: int
+    ) -> typing.Tuple[tf.Tensor, tf.Tensor]:
         (xi, x), (yi, y) = batch1, batch2
         x1, y0 = tf.expand_dims(x, axis=1), tf.expand_dims(y, axis=0)
         xy_dist = tf.reduce_sum(tf.square(x1 - y0), axis=2)
@@ -329,23 +356,25 @@ class MNNAdversarial(Adversarial, MNN):
 class AdaptiveMNNAdversarial(MNNAdversarial):
 
     def __init__(
-        self, batch_dim, h_dim=128, depth=1, dropout=0.0,
-        lambda_reg=0.01, n_steps=1, n_neighbors=5, delay=20,
-        name="AdptMNNAdvBatch"
-    ):
+            self, batch_dim: int, h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.01, n_steps: int = 1,
+            n_neighbors: int = 5, delay: int = 20, name: str = "AdptMNNAdvBatch"
+    ) -> None:
         super(AdaptiveMNNAdversarial, self).__init__(
             batch_dim, h_dim, depth, dropout, lambda_reg, n_steps, n_neighbors,
             delay=delay, name=name
         )
 
-    def _build_regularizer(self, input_tensor, training_flag,
-                           epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, input_tensor: tf.Tensor, training_flag: tf.Tensor,
+            epoch: tf.Tensor, scope: str = "discriminator"
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.batch = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.batch_dim),
                 name=self.scope_safe_name
             )
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope):
             # Select cells with batch identity
             mask = tf.cast(tf.reduce_sum(self.batch, axis=1) > 0, tf.int32)
@@ -385,9 +414,11 @@ class AdaptiveMNNAdversarial(MNNAdversarial):
             batch = tf.dynamic_partition(batch, include_mask, 2)[1]
             input_tensor = tf.dynamic_partition(input_tensor, include_mask, 2)[1]
             # Distriminator loss
+            dropout = np.zeros(self.depth)
+            dropout[1:] = self.dropout  # No dropout for first layer
             batch_pred = tf.identity(nn.dense(nn.mlp(
                 input_tensor, [self.h_dim] * self.depth,
-                dropout=self.dropout, training_flag=training_flag
+                dropout=dropout.tolist(), training_flag=training_flag
             ), self.batch_dim), "batch_logit")
             self.batch_d_loss = tf.cast(
                 epoch >= self.delay, tf.float32
@@ -411,13 +442,20 @@ class AdaptiveMNNAdversarial(MNNAdversarial):
         return self.lambda_reg * self.batch_g_loss
 
     @staticmethod
-    def _mnn_idx_mask(batch1, batch2, k, n):
+    def _mnn_idx_mask(
+            batch1: typing.Tuple[tf.Tensor, tf.Tensor],
+            batch2: typing.Tuple[tf.Tensor, tf.Tensor],
+            k: int, n: int
+    ) -> tf.Tensor:
         idx1, idx2 = AdaptiveMNNAdversarial._mnn_idx(batch1, batch2, k)
         idx = tf.cast(tf.concat([idx1, idx2], axis=0), tf.int32)
         return tf.reduce_sum(tf.one_hot(idx, depth=n), axis=0)
 
     @staticmethod
-    def _masked_softmax_cross_entropy_with_logits(cum, tensors):
+    def _masked_softmax_cross_entropy_with_logits(
+            cum: tf.Tensor,  # pylint: disable=unused-argument
+            tensors: typing.Tuple[tf.Tensor, tf.Tensor, tf.Tensor]
+    ) -> tf.Tensor:
         labels, logits, mask = tensors
         labels = tf.dynamic_partition(labels, mask, 2)[1]
         logits = tf.dynamic_partition(logits, mask, 2)[1]

@@ -8,7 +8,7 @@ import Cell_BLAST as cb
 
 def clean_dataset(dataset, obs_col):
     mask = na_mask(dataset.obs[obs_col])
-    cb.message.info("Cleaning removed %d cells." % mask.sum())
+    cb.utils.logger.info("Cleaning removed %d cells.", mask.sum())
     return dataset[~mask, :]
 
 

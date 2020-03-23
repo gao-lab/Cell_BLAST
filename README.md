@@ -7,7 +7,7 @@ Annotations in reference cells, e.g. cell type, can then be transfered to query
 cells based on cell-to-cell similarities. See our
 [preprint](https://www.biorxiv.org/content/10.1101/587360v2) for details.
 
-![flowchart](doc/_static/flowchart.svg)
+![flowchart](docs/_static/flowchart.svg)
 
 ## Installing the python package
 
@@ -56,7 +56,7 @@ off-the-shelf querying of our ACA reference panels.
 * The `Datasets` directory contains scripts used for building the ACA database.
 * The `Evaluation` directory contains scripts used for benchmarking
   and producing some figures of the manuscript.
-* The `doc` directory contains files used to generate the online documentation.
+* The `docs` directory contains files used to generate the online documentation.
 * The `test` directory contains unit tests for the python package.
 
 ## Reproduce results
@@ -93,7 +93,7 @@ pip install local/DCA-0.2.2.tar.gz --no-deps  # Allow GPU memory growth, suppres
 pip install local/DCA_modpp-0.2.2.tar.gz --no-deps  # Modify preprocessing
 pip install local/ZIFA-0.1.tar.gz --no-deps  # Remove fixed random seeds
 pip install local/Dhaka-0.1.tar.gz --no-deps
-pip install local/scVI-0.2.3.tar.gz --no-deps  # Fix torch bugs
+pip install local/scvi-0.2.3.tar.gz --no-deps  # Fix torch bugs
 ```
 
 #### R

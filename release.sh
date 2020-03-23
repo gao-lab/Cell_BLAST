@@ -21,10 +21,9 @@ if [[ "$yn" != "y" ]]; then
 fi
 
 sed -i "s/version=.*/version=\"$1\",/g" setup.py
-sed -i "s/release = .*/release = '$1'/g" doc/conf.py
 sed -i "s/__version__ = .*/__version__ = \"$1\"/g" Cell_BLAST/__init__.py
 
-(cd doc && make clean && make html)
+rm -rf docs/_build && sphinx-build -b html docs docs/_build
 read -p "Confirm documentation is up-to-date? [y/n] " yn
 if [[ "$yn" != "y" ]]; then
     exit 4

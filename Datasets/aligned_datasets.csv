@@ -1,5 +1,5 @@
 dataset_name,organism,organ,lifestage,platform,cell_number,publication,pmid,CL,remark
-ALIGNED_Homo_sapiens_Kidney,Homo sapiens,Kidney,,,,,,,"Wu_human, Young"
+ALIGNED_Homo_sapiens_Kidney,Homo sapiens,Kidney,,,,,,,"Wu_human, Young, Hochane"
 ALIGNED_Homo_sapiens_Mammary_Gland,Homo sapiens,Mammary Gland,,,,,,,"Nguyen_10x, Nguyen_C1"
 ALIGNED_Homo_sapiens_Pancreas,Homo sapiens,Pancreas,,,,,,,"Baron_human, Segerstolpe, Muraro, Xin, Lawlor, Enge"
 ALIGNED_Homo_sapiens_Bone_Marrow,Homo sapiens,Bone Marrow,,,,,,,"Velten_QUARTZ-seq, Velten_Smart-seq2"

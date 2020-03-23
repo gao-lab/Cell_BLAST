@@ -1,22 +1,28 @@
-"""
+r"""
 Latent space / encoder modules for DIRECTi
 """
 
 
+import typing
+import abc
+
 import numpy as np
-import tensorflow as tf
 import sklearn.metrics
-from . import nn
-from . import module
-from . import utils
+import tensorflow as tf
+
+from . import module, nn, utils
 
 
 class Latent(module.Module):
+    r"""
+    Abstract base class for latent variable modules.
     """
-    Parent class for latent variable modules.
-    """
-    def __init__(self, latent_dim, h_dim=128, depth=1, dropout=0.0,
-                 lambda_reg=0.0, fine_tune=False, deviation_reg=0.0, name="Latent"):
+    def __init__(
+            self, latent_dim: int, h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.0,
+            fine_tune: bool = False, deviation_reg: float = 0.0,
+            name: str = "Latent"
+    ) -> None:
         super(Latent, self).__init__(name=name)
         self.latent_dim = latent_dim
         self.h_dim = h_dim
@@ -29,18 +35,24 @@ class Latent(module.Module):
             (lambda x: self.deviation_reg * tf.reduce_mean(tf.square(x))) \
             if self.fine_tune and self.deviation_reg > 0 else None
 
-    def _build_latent(self, pre_latent, training_flag, scope="encoder"):  # pragma: no cover
-        raise NotImplementedError(
-            "Calling virtual `build_latent` from `Latent`!")
+    @abc.abstractmethod
+    def _build_latent(
+            self, x: tf.Tensor, training_flag: tf.Tensor,
+            scope: str = "encoder"
+    ) -> tf.Tensor:  # pragma: no cover
+        raise NotImplementedError
 
-    def _build_regularizer(self, training_flag, epoch, scope="regularizer"):  # pragma: no cover
-        raise NotImplementedError(
-            "Calling virtual `build_regularizer` from `Latent`!")
+    @abc.abstractmethod
+    def _build_regularizer(
+            self, training_flag: tf.Tensor, epoch: tf.Tensor,
+            scope: str = "regularizer"
+    ) -> tf.Tensor:  # pragma: no cover
+        raise NotImplementedError
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return True
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "latent_dim": self.latent_dim,
             "h_dim": self.h_dim,
@@ -54,32 +66,39 @@ class Latent(module.Module):
 
 
 class Gau(Latent):
-    """
+    r"""
     Build a Gaussian latent module. The Gaussian latent variable is used as
     cell embedding.
 
     Parameters
     ----------
-    latent_dim : int
+    latent_dim
         Dimensionality of the latent variable.
-    h_dim : int
-        Dimensionality of the hidden layers in the encoder MLP, by default 128.
-    depth : int
-        Number of hidden layers in the encoder MLP, by default 1.
-    dropout : float
-        Dropout rate, by default 0.0.
-    lambda_reg : float
-        Regularization strength on the latent variable, by default 0.001.
-    name : str
-        Name of the module, by default "Gau".
+    h_dim
+        Dimensionality of the hidden layers in the encoder MLP.
+    depth
+        Number of hidden layers in the encoder MLP.
+    dropout
+        Dropout rate.
+    lambda_reg
+        Regularization strength on the latent variable.
+    name
+        Name of the module.
     """
-    def __init__(self, latent_dim, h_dim=128, depth=1, dropout=0.0,
-                 lambda_reg=0.001, fine_tune=False, deviation_reg=0.0, name="Gau"):
+    def __init__(
+            self, latent_dim: int, h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.001,
+            fine_tune: bool = False, deviation_reg: float = 0.0,
+            name: str = "Gau"
+    ) -> None:
         super(Gau, self).__init__(latent_dim, h_dim, depth, dropout, lambda_reg,
                                   fine_tune, deviation_reg, name)
 
-    def _build_latent(self, x, training_flag, scope="encoder"):
-        self.build_latent_scope = "%s/%s" % (scope, self.scope_safe_name)
+    def _build_latent(
+            self, x: tf.Tensor, training_flag: tf.Tensor,
+            scope: str = "encoder"
+    ) -> tf.Tensor:
+        self.build_latent_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_latent_scope):
             dense_kwargs = [dict(
                 deviation_regularizer=self.deviation_regularizer
@@ -99,19 +118,24 @@ class Gau(Latent):
             tf.GraphKeys.GLOBAL_VARIABLES, self.build_latent_scope)
         return self.gau
 
-    def _build_regularizer(self, training_flag, epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, training_flag: tf.Tensor, epoch: tf.Tensor,
+            scope: str = "discriminator"
+    ) -> tf.Tensor:
         self.gaup_sampler = tf.distributions.Normal(loc=0.0, scale=1.0)
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope, reuse=tf.AUTO_REUSE):
             self.gaup = self.gaup_sampler.sample((
                 tf.shape(self.gau)[0], self.latent_dim))
+            dropout = np.zeros(self.depth)
+            dropout[1:] = self.dropout  # No dropout for first layer
             gau_pred = tf.sigmoid(nn.dense(nn.mlp(
                 self.gau, [self.h_dim] * self.depth,
-                dropout=self.dropout, training_flag=training_flag
+                dropout=dropout.tolist(), training_flag=training_flag
             ), 1), name="pred")
             gaup_pred = tf.sigmoid(nn.dense(nn.mlp(
                 self.gaup, [self.h_dim] * self.depth,
-                dropout=self.dropout, training_flag=training_flag
+                dropout=dropout.tolist(), training_flag=training_flag
             ), 1), name="prior_pred")
             self.gau_d_loss, self.gau_g_loss = nn.gan_loss(gaup_pred, gau_pred)
 
@@ -122,8 +146,8 @@ class Gau(Latent):
 
         return self.lambda_reg * self.gau_g_loss
 
-    def _compile(self, optimizer, lr):
-        with tf.variable_scope("optimize/%s" % self.scope_safe_name):
+    def _compile(self, optimizer: str, lr: float) -> None:
+        with tf.variable_scope(f"optimize/{self.scope_safe_name}"):
             optimizer = getattr(tf.train, optimizer)
             self.step = optimizer(lr).minimize(
                 self.lambda_reg * self.gau_d_loss,
@@ -136,7 +160,7 @@ class Gau(Latent):
 
 
 class CatGau(Latent):
-    """
+    r"""
     Build a double latent module, with a continuous Gaussian latent variable
     and a one-hot categorical latent variable for intrinsic clustering of
     the data. These two latent variabels are then combined into a single
@@ -144,40 +168,41 @@ class CatGau(Latent):
 
     Parameters
     ----------
-    latent_dim : int
+    latent_dim
         Dimensionality of the Gaussian latent variable.
-    cat_dim : int
+    cat_dim
         Number of intrinsic clusters.
-    h_dim : int
-        Dimensionality of the hidden layers in the encoder MLP, by default 128.
-    depth : int
-        Number of hidden layers in the encoder MLP, by default 1.
-    dropout : float
-        Dropout rate, by default 0.0.
-    multiclass_adversarial : bool
+    h_dim
+        Dimensionality of the hidden layers in the encoder MLP.
+    depth
+        Number of hidden layers in the encoder MLP.
+    dropout
+        Dropout rate.
+    multiclass_adversarial
         Whether to use multi-class adversarial regularization on the
-        Gaussian latent variable, by default False.
+        Gaussian latent variable.
         Setting this to True makes each intrinsic cluster more Gaussian-like.
-    cat_merge : bool
-        Whether to enable heuristic cluster merging during training,
-        by default False.
-    min_silhouette : float
+    cat_merge
+        Whether to enable heuristic cluster merging during training.
+    min_silhouette
         Minimal average silhouette score below which intrinsic clusters will be
-        merged, by default 0.0.
-    patience : int
+        merged.
+    patience
         Execute heuristic cluster merging under a "fast-ring" early stop
-        mechanism, with early stop patience specified by this argument,
-        by default 10.
-    lambda_reg : float
-        Regularization strength on the latent variables, by default 0.001.
-    name : str
-        Name of the module, by default "CatGau".
+        mechanism, with early stop patience specified by this argument.
+    lambda_reg
+        Regularization strength on the latent variables.
+    name
+        Name of the module.
     """
-    def __init__(self, latent_dim, cat_dim, h_dim=128, depth=1, dropout=0.0,
-                 multiclass_adversarial=False,
-                 cat_merge=False, min_silhouette=0.0, patience=10,
-                 lambda_reg=0.001, fine_tune=False, deviation_reg=0.0,
-                 name="CatGau"):
+    def __init__(
+            self, latent_dim: int, cat_dim: int,
+            h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
+            multiclass_adversarial: bool = False, cat_merge: bool = False,
+            min_silhouette: float = 0.0, patience: int = 10,
+            lambda_reg: float = 0.001, fine_tune: bool = False,
+            deviation_reg: float = 0.0, name="CatGau"
+    ) -> None:
         super(CatGau, self).__init__(latent_dim, h_dim, depth, dropout,
                                      lambda_reg, fine_tune, deviation_reg, name)
         self.cat_dim = cat_dim
@@ -188,13 +213,16 @@ class CatGau(Latent):
         if cat_merge:
             self.on_epoch_end.append(self._cat_merge)
 
-    def _build_latent(self, x, training_flag, scope="encoder"):
-        self.build_latent_scope = "%s/%s" % (scope, self.scope_safe_name)
+    def _build_latent(
+            self, x: tf.Tensor, training_flag: tf.Tensor,
+            scope: str = "encoder"
+    ) -> tf.Tensor:
+        self.build_latent_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_latent_scope):
             dense_kwargs = [dict(
                 deviation_regularizer=self.deviation_regularizer
             )] * self.depth
-            if dense_kwargs:  # Fix the first laye2yyr
+            if dense_kwargs:  # Fix the first layer
                 dense_kwargs[0]["weights_trainable"] = not self.fine_tune
             ptr = nn.mlp(
                 x, [self.h_dim] * self.depth,
@@ -223,7 +251,10 @@ class CatGau(Latent):
             tf.GraphKeys.GLOBAL_VARIABLES, self.build_latent_scope)
         return self.latent
 
-    def _build_regularizer(self, training_flag, epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, training_flag: tf.Tensor, epoch: tf.Tensor,
+            scope: str = "discriminator"
+    ) -> tf.Tensor:
         self.catp_mask = tf.get_variable(
             "catp_mask", initializer=np.ones(self.cat_dim), trainable=False)
         self.vars_to_save.append(self.catp_mask)
@@ -234,34 +265,40 @@ class CatGau(Latent):
             return self._build_multiclass_regularizer(training_flag, scope)
         return self._build_binary_regularizer(training_flag, scope)
 
-    def _build_binary_regularizer(self, training_flag, scope="discriminator"):
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+    def _build_binary_regularizer(
+            self, training_flag: tf.Tensor, scope: str = "discriminator"
+    ) -> tf.Tensor:
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope, reuse=tf.AUTO_REUSE):
             with tf.variable_scope("cat"):
                 self.catp = tf.one_hot(
                     self.catp_sampler.sample(tf.shape(self.cat)[0]),
                     depth=self.cat_dim
                 )
+                dropout = np.zeros(self.depth)
+                dropout[1:] = self.dropout  # No dropout for first layer
                 cat_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.cat, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="pred")
                 catp_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.catp, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="prior_pred")
                 self.cat_d_loss, self.cat_g_loss = \
                     nn.gan_loss(catp_pred, cat_pred)
             with tf.variable_scope("gau"):
                 self.gaup = self.gaup_sampler.sample((
                     tf.shape(self.gau)[0], self.latent_dim))
+                dropout = np.zeros(self.depth)
+                dropout[1:] = self.dropout  # No dropout for first layer
                 gau_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.gau, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="pred")
                 gaup_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.gaup, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="prior_pred")
                 self.gau_d_loss, self.gau_g_loss = \
                     nn.gan_loss(gaup_pred, gau_pred)
@@ -274,34 +311,40 @@ class CatGau(Latent):
         tf.add_to_collection(tf.GraphKeys.LOSSES, self.gau_g_loss)
         return self.lambda_reg * (self.cat_g_loss + self.gau_g_loss)
 
-    def _build_multiclass_regularizer(self, training_flag, scope="discriminator"):
-        self.build_regularizer_scope = "%s/%s" % (scope, self.scope_safe_name)
+    def _build_multiclass_regularizer(
+            self, training_flag: tf.Tensor, scope: str = "discriminator"
+    ) -> tf.Tensor:
+        self.build_regularizer_scope = f"{scope}/{self.scope_safe_name}"
         with tf.variable_scope(self.build_regularizer_scope, reuse=tf.AUTO_REUSE):
             with tf.variable_scope("cat"):
                 self.catp = tf.one_hot(
                     self.catp_sampler.sample(tf.shape(self.cat)[0]),
                     depth=self.cat_dim
                 )
+                dropout = np.zeros(self.depth)
+                dropout[1:] = self.dropout  # No dropout for first layer
                 cat_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.cat, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="pred")
                 catp_pred = tf.sigmoid(nn.dense(nn.mlp(
                     self.catp, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), 1), name="prior_pred")
                 self.cat_d_loss, self.cat_g_loss = \
                     nn.gan_loss(catp_pred, cat_pred)
             with tf.variable_scope("gau"):
                 self.gaup = self.gaup_sampler.sample((
                     tf.shape(self.gau)[0], self.latent_dim))
+                dropout = np.zeros(self.depth)
+                dropout[1:] = self.dropout  # No dropout for first layer
                 gau_logits = nn.dense(nn.mlp(
                     self.gau, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), self.cat_dim + 1)
                 gaup_logits = nn.dense(nn.mlp(
                     self.gaup, [self.h_dim] * self.depth,
-                    dropout=self.dropout, training_flag=training_flag
+                    dropout=dropout.tolist(), training_flag=training_flag
                 ), self.cat_dim + 1)
                 true = tf.concat([
                     tf.concat([
@@ -329,8 +372,8 @@ class CatGau(Latent):
         tf.add_to_collection(tf.GraphKeys.LOSSES, self.gau_g_loss)
         return self.lambda_reg * (self.cat_g_loss + self.gau_g_loss)
 
-    def _compile(self, optimizer, lr):
-        with tf.variable_scope("optimize/%s" % self.scope_safe_name):
+    def _compile(self, optimizer: str, lr: float) -> None:
+        with tf.variable_scope(f"optimize/{self.scope_safe_name}"):
             optimizer = getattr(tf.train, optimizer)
             self.step = optimizer(lr).minimize(
                 self.lambda_reg * (self.cat_d_loss + self.gau_d_loss),
@@ -342,7 +385,12 @@ class CatGau(Latent):
             tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, self.step)
 
     # On epoch end heuristic
-    def _cat_merge(self, model, train_data_dict, val_data_dict, loss):
+    def _cat_merge(
+            self, model: "directi.DIRECTi",
+            train_data_dict: utils.DataDict,
+            val_data_dict: utils.DataDict,  # pylint: disable=unused-argument
+            loss: tf.Tensor
+    ) -> bool:
 
         # Initialization
         if "_cat_merge_dict" not in dir(self):
@@ -393,10 +441,10 @@ class CatGau(Latent):
                 sample_silhouette = sklearn.metrics.silhouette_samples(
                     latent, cluster)
                 cluster_silhouette = np.empty(len(population))
-                for i in range(len(population)):
+                for i, _population in enumerate(population):
                     cluster_silhouette[i] = sample_silhouette[
                         cluster == i
-                    ].mean() if population[i] > 0 else np.inf
+                    ].mean() if _population > 0 else np.inf
                 population[cluster_silhouette > self.min_silhouette] = np.inf
                 remove_candidate = set(
                     np.where(np.isfinite(population))[0]
@@ -428,10 +476,12 @@ class CatGau(Latent):
 
         return d["converged"]
 
-    def _safe_cat(self, model):  # define which clusters should safe from merging
+    def _safe_cat(
+            self, model: "directi.DIRECTi"  # pylint: disable=unused-argument
+    ) -> typing.List:  # define which clusters should safe from merging
         return []
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "cat_dim": self.cat_dim,
             "multiclass_adversarial": self.multiclass_adversarial,
@@ -443,7 +493,7 @@ class CatGau(Latent):
 
 
 class SemiSupervisedCatGau(CatGau):
-    """
+    r"""
     Build a double latent module, with a continuous Gaussian latent variable
     and a one-hot categorical latent variable for intrinsic clustering of
     the data. The categorical latent supports semi-supervision. The two latent
@@ -451,51 +501,52 @@ class SemiSupervisedCatGau(CatGau):
 
     Parameters
     ----------
-    latent_dim : int
+    latent_dim
         Dimensionality of the Gaussian latent variable.
-    cat_dim : int
+    cat_dim
         Number of intrinsic clusters.
-    h_dim : int
-        Dimensionality of the hidden layers in the encoder MLP, by default 128.
-    depth : int
-        Number of hidden layers in the encoder MLP, by default 1.
-    dropout : float
-        Dropout rate, by default 0.0.
-    multiclass_adversarial : bool
+    h_dim
+        Dimensionality of the hidden layers in the encoder MLP.
+    depth
+        Number of hidden layers in the encoder MLP.
+    dropout
+        Dropout rate.
+    multiclass_adversarial
         Whether to use multi-class adversarial regularization on the
-        Gaussian latent variable, by default False.
+        Gaussian latent variable.
         Setting this to True makes each intrinsic cluster more Gaussian-like.
-    cat_merge : bool
-        Whether to enable heuristic cluster merging during training,
-        by default False.
-    min_silhouette : float
+    cat_merge
+        Whether to enable heuristic cluster merging during training.
+    min_silhouette
         Minimal average silhouette score required to prevent an instrinsic
-        cluster from being merged, by default 0.0.
-    patience : int
+        cluster from being merged.
+    patience
         Execute heuristic cluster merging under a "fast-ring" early stop
-        mechanism, with early stop patience specified by this argument,
-        by default 10.
-    lambda_sup : float
-        Supervision strength, by default 10.0.
-    background_catp : float
+        mechanism, with early stop patience specified by this argument.
+    lambda_sup
+        Supervision strength.
+    background_catp
         Unnormalized background prior distribution of the intrinsic
-        clustering latent, by default 1e-3.
+        clustering latent.
         For each supervised cell in a minibatch, unnormalized prior
         probability of the corresponding cluster will increase by 1,
         so this parameter determines how much to trust supervision class
         frequency, and it balances between supervision and identifying new
         clusters.
-    lambda_reg : float
-        Regularization strength on the latent variables, by default 0.001.
-    name : str
-        Name of latent module, by default "SemiSupervisedCatGau".
+    lambda_reg
+        Regularization strength on the latent variables.
+    name
+        Name of latent module.
     """
-    def __init__(self, latent_dim, cat_dim, h_dim=128, depth=1, dropout=0.0,
-                 multiclass_adversarial=False,
-                 cat_merge=False, min_silhouette=0.0, patience=10,
-                 lambda_sup=10.0, background_catp=1e-3,
-                 lambda_reg=0.001, fine_tune=False, deviation_reg=0.0,
-                 name="SemiSupervisedCatGau"):
+    def __init__(
+            self, latent_dim: int, cat_dim: int,
+            h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
+            multiclass_adversarial: bool = False, cat_merge: bool = False,
+            min_silhouette: float = 0.0, patience: int = 10,
+            lambda_sup: float = 10.0, background_catp: float = 1e-3,
+            lambda_reg: float = 0.001, fine_tune: bool = False,
+            deviation_reg: float = 0.0, name: str = "SemiSupervisedCatGau"
+    ) -> None:
         super(SemiSupervisedCatGau, self).__init__(
             latent_dim, cat_dim, h_dim, depth, dropout, multiclass_adversarial,
             cat_merge, min_silhouette, patience, lambda_reg,
@@ -504,7 +555,10 @@ class SemiSupervisedCatGau(CatGau):
         self.lambda_sup = lambda_sup
         self.background_catp = background_catp
 
-    def _build_regularizer(self, training_flag, epoch, scope="discriminator"):
+    def _build_regularizer(
+            self, training_flag: tf.Tensor, epoch: tf.Tensor,
+            scope: str = "discriminator"
+    ) -> tf.Tensor:
         with tf.name_scope("placeholder/"):
             self.cats = tf.placeholder(
                 dtype=tf.float32, shape=(None, self.cat_dim), name="cats")
@@ -526,7 +580,7 @@ class SemiSupervisedCatGau(CatGau):
         self.gaup_sampler = tf.distributions.Normal(loc=0.0, scale=1.0)
         self.vars_to_save.append(self.catp_mask)
 
-        with tf.name_scope("semi_supervision/%s" % self.scope_safe_name):
+        with tf.name_scope(f"semi_supervision/{self.scope_safe_name}"):
             mask = tf.cast(tf.reduce_sum(self.cats, axis=1) > 0, tf.int32)
             masked_cat_logit = tf.dynamic_partition(self.cat_logit, mask, 2)[1]
             masked_cats = tf.dynamic_partition(self.cats, mask, 2)[1]
@@ -550,15 +604,15 @@ class SemiSupervisedCatGau(CatGau):
             else self._build_binary_regularizer
         )(training_flag, scope)
 
-    def _build_feed_dict(self, data_dict):
+    def _build_feed_dict(self, data_dict: utils.DataDict) -> typing.Mapping:
         return {
             self.cats: utils.densify(data_dict[self.name])
         } if self.name in data_dict else {}
 
-    def _safe_cat(self, model):
+    def _safe_cat(self, model: "directi.DIRECTi") -> typing.List:
         return np.where(model.sess.run(self.cats_coverage))[0]
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {
             "lambda_sup": self.lambda_sup,
             "background_catp": self.background_catp,

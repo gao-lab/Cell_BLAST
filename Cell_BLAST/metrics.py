@@ -1,14 +1,17 @@
-"""
+r"""
 Functions for computing benchmark metrics
 """
 
+import typing
 
 import numpy as np
 import pandas as pd
+import scipy.sparse
 import sklearn.metrics
 import sklearn.neighbors
-from . import blast
-from . import utils
+import igraph
+
+from . import blast, utils
 
 _identity = lambda x, y: 1 if x == y else 0
 
@@ -18,8 +21,8 @@ _identity = lambda x, y: 1 if x == y else 0
 #  Cluster based metrics
 #
 #===============================================================================
-def confusion_matrix(x, y):
-    """
+def confusion_matrix(x: np.ndarray, y: np.ndarray) -> pd.DataFrame:
+    r"""
     Reimplemented this because sklearn.metrics.confusion_matrix
     does not provide row names and column names.
     """
@@ -33,7 +36,9 @@ def confusion_matrix(x, y):
     return pd.DataFrame(data=cm, index=x_c, columns=y_c)
 
 
-def class_specific_accuracy(true, pred, expectation):
+def class_specific_accuracy(
+        true: np.ndarray, pred: np.ndarray, expectation: pd.DataFrame
+) -> pd.DataFrame:
     df = pd.DataFrame(index=np.unique(true), columns=["number", "accuracy"])
     expectation = expectation.astype(np.bool)
     for c in df.index:
@@ -44,11 +49,78 @@ def class_specific_accuracy(true, pred, expectation):
     return df
 
 
-def mean_balanced_accuracy(true, pred, expectation, population_weighed=False):
+def mean_balanced_accuracy(
+        true: np.ndarray, pred: np.ndarray, expectation: pd.DataFrame,
+        population_weighed: bool = False
+) -> float:
     df = class_specific_accuracy(true, pred, expectation)
     if population_weighed:
         return (df["accuracy"] * df["number"]).sum() / df["number"].sum()
     return df["accuracy"].mean()
+
+
+def cl_accuracy(
+        cl_dag: utils.CellTypeDAG,
+        source: np.ndarray, target: np.ndarray,
+        ref_cl_list: typing.List[str]  # a list of unique cl in ref
+) -> pd.DataFrame:
+    if len(source) != len(target):
+        raise ValueError("Invalid input: different cell number.")
+    positive_cl = []
+    negative_cl = []
+    for query_cl in np.unique(source):
+        for ref_cl in ref_cl_list:
+            if cl_dag.is_related(query_cl, ref_cl):
+                positive_cl.append(query_cl)
+                break
+        else:
+            negative_cl.append(query_cl)
+
+    # sensitivity
+    accuracy_dict = {}
+    ref_cl_set = {cl_dag.get_vertex(item) for item in ref_cl_list}
+    for query_cl in positive_cl:
+        target_cl = target[source == query_cl]
+        cl_accuracy = np.zeros(target_cl.size)
+        cache = {}  # avoid repeated computation
+        for i, _target_cl in enumerate(target_cl):
+            if _target_cl in cache:
+                cl_accuracy[i] = cache[_target_cl]
+                continue
+            if cl_dag.is_descendant_of(_target_cl, query_cl):
+                cache[_target_cl] = 1  # equal or descendant results as 1
+            elif cl_dag.is_ancestor_of(_target_cl, query_cl):
+                intermediates = set.intersection(
+                    set(cl_dag.graph.bfsiter(cl_dag.get_vertex(query_cl), mode=igraph.OUT)),
+                    set(cl_dag.graph.bfsiter(cl_dag.get_vertex(_target_cl), mode=igraph.IN))
+                )
+                cache[_target_cl] = np.mean([
+                    len(list(cl_dag.graph.bfsiter(intermediate, mode=igraph.IN))) /
+                    len(list(cl_dag.graph.bfsiter(cl_dag.get_vertex(_target_cl), mode=igraph.IN)))
+                    for intermediate in intermediates
+                    if ref_cl_set.intersection(set(cl_dag.graph.bfsiter(intermediate, mode=igraph.IN)))
+                ])
+            else:
+                cache[_target_cl] = 0
+            cl_accuracy[i] = cache[_target_cl]
+        accuracy_dict[query_cl] = [cl_accuracy.size, cl_accuracy.mean(), True]
+
+    # specificity
+    for query_cl in negative_cl:
+        target_cl = target[source == query_cl]
+        cl_accuracy = np.in1d(target_cl, ["rejected", "unassigned"])
+        accuracy_dict[query_cl] = [cl_accuracy.size, cl_accuracy.mean(), False]
+
+    return pd.DataFrame(accuracy_dict, index=("cell number", "accuracy", "positive")).T
+
+
+def cl_mba(
+        cl_dag: utils.CellTypeDAG,
+        source: np.ndarray, target: np.ndarray,
+        ref_cl_list: typing.List[str]
+) -> float:
+    accuracy_df = cl_accuracy(cl_dag=cl_dag, source=source, target=target, ref_cl_list=ref_cl_list)
+    return accuracy_df["accuracy"].mean()
 
 
 #===============================================================================
@@ -57,7 +129,9 @@ def mean_balanced_accuracy(true, pred, expectation, population_weighed=False):
 #
 #===============================================================================
 def nearest_neighbor_accuracy(
-        x, y, metric="minkowski", similarity=_identity, n_jobs=1):
+        x: np.ndarray, y: np.ndarray, metric: str = "minkowski",
+        similarity: typing.Callable = _identity, n_jobs: int = 1
+) -> float:
     nearestNeighbors = sklearn.neighbors.NearestNeighbors(
         n_neighbors=2, metric=metric, n_jobs=n_jobs)
     nearestNeighbors.fit(x)
@@ -66,9 +140,10 @@ def nearest_neighbor_accuracy(
 
 
 def mean_average_precision_from_latent(
-    x, y, p=None, k=0.01, metric="minkowski", posterior_metric="npd_v1",
-    similarity=_identity, n_jobs=1
-):
+        x: np.ndarray, y: np.ndarray, p: typing.Optional[np.ndarray] = None,
+        k: float = 0.01, metric: str = "minkowski", posterior_metric: str = "npd_v1",
+        similarity: typing.Callable = _identity, n_jobs: int = 1
+) -> float:
     if k < 1:
         k = y.shape[0] * k
     k = np.round(k).astype(np.int)
@@ -89,12 +164,15 @@ def mean_average_precision_from_latent(
     return mean_average_precision(y, y[nni[:, 1:]], similarity=similarity)
 
 
-def average_silhouette_score(x, y):
+def average_silhouette_score(x: np.ndarray, y: np.ndarray) -> float:
     return sklearn.metrics.silhouette_score(x, y)
 
 
 def seurat_alignment_score(
-        x, y, k=0.01, n=1, metric="minkowski", random_seed=None, n_jobs=1):
+        x: np.ndarray, y: np.ndarray, k: float = 0.01, n: int = 1,
+        metric: str = "minkowski", random_seed: typing.Optional[int] = None,
+        n_jobs: int = 1
+) -> float:
     random_state = np.random.RandomState(random_seed)
     idx_list = [np.where(y == _y)[0] for _y in np.unique(y)]
     subsample_size = min(idx.size for idx in idx_list)
@@ -125,9 +203,10 @@ def seurat_alignment_score(
 
 
 def batch_mixing_entropy(
-    x, y, boots=100, sample_size=100, k=100,
-    metric="minkowski", random_seed=None, n_jobs=1
-):
+        x: np.ndarray, y: np.ndarray, boots: int = 100,
+        sample_size: int = 100, k: int = 100, metric: str = "minkowski",
+        random_seed: typing.Optional[int] = None, n_jobs: int = 1
+) -> float:
     random_state = np.random.RandomState(random_seed)
     batches = np.unique(y)
     entropy = 0
@@ -156,15 +235,141 @@ def batch_mixing_entropy(
 #  Ranking based metrics
 #
 #===============================================================================
-def _average_precision(r):
-    positives = np.where(r == 1)[0] + 1
-    if len(positives):
-        return np.vectorize(
-            lambda k, _r=r: _r[0:k].sum() / k
-        )(positives).mean()
-    return 0.
+def _average_precision(r: np.ndarray) -> float:
+    cummean = np.cumsum(r) / (np.arange(r.size) + 1)
+    mask = r > 0
+    if np.any(mask):
+        return cummean[mask].mean()
+    return 0.0
 
 
-def mean_average_precision(ref, hits, similarity=_identity):
-    r = np.apply_along_axis(np.vectorize(similarity), 0, hits, ref)
+def mean_average_precision(
+        true: np.ndarray, hits: np.ndarray,
+        similarity: typing.Callable[[typing.Any, typing.Any], float] = _identity
+) -> float:
+    r"""
+    Mean average precision
+
+    Parameters
+    ----------
+    true
+        True label
+    hits
+        Hit labels
+    similarity
+        Function that defines the similarity between labels
+
+    Returns
+    -------
+    map
+        Mean average precision
+    """
+    r = np.apply_along_axis(np.vectorize(similarity), 0, hits, true)
     return np.apply_along_axis(_average_precision, 1, r).mean()
+
+
+#===============================================================================
+#
+#  Structure preservation
+#
+#===============================================================================
+def avg_neighbor_jacard(
+        x: np.ndarray, y: np.ndarray,
+        x_metric: str = "minkowski", y_metric: str = "minkowski",
+        k: typing.Union[int, float] = 0.01, n_jobs: int = 1
+) -> float:
+    r"""
+    Average neighborhood Jacard index.
+
+    Parameters
+    ----------
+    x
+        First feature space.
+    y
+        Second feature space.
+    x_metric
+        Distance metric to use in first feature space.
+        See :class:`sklearn.neighbors.NearestNeighbors` for available options.
+    y_metric
+        Distance metric to use in second feature space.
+        See :class:`sklearn.neighbors.NearestNeighbors` for available options.
+    k
+        Number (if k is an integer greater than 1) or fraction in total data
+        (if k is a float less than 1) of nearest neighbors to consider.
+    n_jobs
+        Number of parallel jobs to use when doing nearest neighbor search.
+        See :class:`sklearn.neighbors.NearestNeighbors` for details.
+
+    Returns
+    -------
+    jacard
+        Average neighborhood Jacard index.
+    """
+    if x.shape[0] != y.shape[0]:
+        raise ValueError("Inconsistent shape!")
+    n = x.shape[0]
+    k = n * k if k < 1 else k
+    k = np.round(k).astype(np.int)
+    nn = sklearn.neighbors.NearestNeighbors(
+        n_neighbors=min(n, k + 1), metric=x_metric, n_jobs=n_jobs
+    ).fit(x)
+    nni_x = nn.kneighbors(x, return_distance=False)[:, 1:]
+    nn = sklearn.neighbors.NearestNeighbors(
+        n_neighbors=min(n, k + 1), metric=y_metric, n_jobs=n_jobs
+    ).fit(y)
+    nni_y = nn.kneighbors(y, return_distance=False)[:, 1:]
+    jacard = np.array([
+        np.intersect1d(i, j).size / np.union1d(i, j).size
+        for i, j in zip(nni_x, nni_y)
+    ])
+    return jacard.mean()
+
+
+def jacard_index(
+        x: scipy.sparse.csr_matrix, y: scipy.sparse.csr_matrix
+) -> np.ndarray:
+    r"""
+    Compute Jacard index between two nearest neighbor graphs
+
+    Parameters
+    ----------
+    x
+        First nearest neighbor graph
+    y
+        Second nearest neighbor graph
+
+    Returns
+    -------
+    jacard
+        Jacard index for each row
+    """
+    xy = x + y
+    return np.asarray((xy == 2).sum(axis=1)).ravel() / \
+        np.asarray((xy > 0).sum(axis=1)).ravel()
+
+
+def neighbor_preservation_score(
+        x: np.ndarray, nng: scipy.sparse.spmatrix,
+        metric: str = "minkowski", k: typing.Union[int, float] = 0.01,
+        n_jobs: int = 1
+) -> float:
+    if not x.shape[0] == nng.shape[0] == nng.shape[1]:
+        raise ValueError("Inconsistent shape!")
+    n = x.shape[0]
+    k = n * k if k < 1 else k
+    k = np.round(k).astype(np.int)
+    nn = sklearn.neighbors.NearestNeighbors(
+        n_neighbors=min(n, k + 1), metric=metric, n_jobs=n_jobs
+    ).fit(x)
+    nni = nn.kneighbors(x, return_distance=False)[:, 1:]
+    ap = np.array([
+        _average_precision(_nng.toarray().ravel()[_nni])
+        for _nng, _nni in zip(nng, nni)
+    ])
+    max_ap = np.array([
+        _average_precision(np.sort(
+            _nng.toarray().ravel()
+        )[::-1][:nni.shape[1]]) for _nng in nng
+    ])
+    ap /= max_ap
+    return ap.mean()

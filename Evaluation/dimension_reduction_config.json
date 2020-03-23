@@ -1,7 +1,15 @@
 {
-    "method": ["PCA", "ZIFA", "ZINB_WaVE", "Dhaka", "DCA", "scVI", "scScope", "Cell_BLAST"],
+    "method": ["PCA", "tSNE", "UMAP", "ZIFA", "ZINB_WaVE", "Dhaka", "DCA", "scVI", "scScope", "Cell_BLAST"],
     "Cell_BLAST": {
         "n_cluster": 20
+    },
+    "tSNE": {
+        "pca": 50,
+        "dimensionality": [2]
+    },
+    "UMAP": {
+        "pca": 50,
+        "dimensionality": [2]
     },
     "dimensionality": [2, 5, 10, 20, 50],
     "dataset": ["Muraro", "Adam", "Guo", "Plasschaert", "Baron_human", "Bach", "Macosko"],

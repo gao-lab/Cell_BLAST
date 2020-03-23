@@ -1,0 +1,6 @@
+build
+release
+*.html
+*.log
+.*
+!.gitignore

@@ -1,33 +1,70 @@
 {
-    "method": ["PCA", "ComBat", "MNN", "CCA", "CCA_anchor", "scVI", "Cell_BLAST"],
-    "PCA": {
-        "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
+    "gene_space_method": [],
+    "latent_space_method": [
+        "PCA", "ComBat+PCA", "MNN+PCA", "CCA_anchor+PCA",
+        "CCA", "scVI", "Cell_BLAST"
+    ],
+    "Null": {
+        "dimensionality": ["NA"],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": ["NA"]
     },
     "ComBat": {
-        "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
-    },
-    "CCA": {
-        "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
+        "dimensionality": ["NA"],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": ["NA"]
     },
     "MNN": {
-        "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
+        "dimensionality": ["NA"],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": ["NA"]
     },
     "CCA_anchor": {
         "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "PCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "ComBat+PCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "MNN+PCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "CCA_anchor+PCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "CCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
     },
     "scVI": {
         "dimensionality": [2, 5, 10, 20, 50],
-        "lambda_rmbatch_reg": [null]
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
     },
     "Cell_BLAST": {
         "dimensionality": [10],
         "lambda_rmbatch_reg": [0.0, 0.001, 0.005, 0.01, 0.05, 0.1, 1.0],
-        "n_cluster": 20
+        "n_cluster": 20,
+        "seed": 16
+    },
+    "Cell_BLAST_reconstruction": {
+        "dimensionality": [10],
+        "lambda_rmbatch_reg": [0.0, 0.001, 0.005, 0.01, 0.05, 0.1, 1.0],
+        "n_cluster": 20,
+        "seed": 16
     },
     "dataset": [
         "Baron_human+Baron_mouse",
@@ -39,7 +76,6 @@
     "batch": "dataset_name",
     "label": "cell_ontology_class",
     "nn": 0.01,
-    "seed": 16,
     "timeout": "12h",
     "plot_ext": "pdf",
     "vis": "tSNE",

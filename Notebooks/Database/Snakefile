@@ -1,70 +1,160 @@
-import functools
+import os
+import sys
+import datetime
+import getpass
+import mysql.connector
 
 configfile: "database_config.json"
 
+
+if "version" not in config:
+    print("Please specify a version string in config!")
+    sys.exit(1)
+if os.path.exists(os.path.join("release", f".{config['version']}-lock")):
+    print(f"Version '{config['version']}' already exists!")
+    sys.exit(2)
+
+reverse_lookup = {
+    output: notebook
+    for notebook in config["notebooks"]
+    for output in config[notebook]["output"]
+}
+
+while True:
+    try:
+        if "db_user" not in config:
+            config["db_user"] = getpass.getuser()
+        if "db_passwd" not in config:
+            config["db_passwd"] = getpass.getpass(
+                "Enter database password for %s: " % config["db_user"])
+        cnx = mysql.connector.connect(
+            user=config["db_user"], password=config["db_passwd"],
+            host="127.0.0.1", database="aca"
+        )
+    except mysql.connector.errors.ProgrammingError:
+        print("Incorrect password! Try again.")
+        del config["db_passwd"]
+        continue
+    except KeyboardInterrupt:
+        print("\nAbort")
+        sys.exit(3)
+    break
+
+
 rule database:
     input:
-        "tarballs",
-        "aca.sql.gz"
+        md5sum="release/md5sum-{version}.txt".format(version=config["version"]),
+        sql="release/aca-{version}.sql.gz".format(version=config["version"]),
+        tarballs="release/tarballs-{version}".format(version=config["version"])
     output:
-        ".database_timestamp"
+        md5sum="release/latest-md5sum.txt",
+        sql="release/latest-aca.sql.gz",
+        tarballs=directory("release/latest-tarballs"),
+        lock="release/.{version}-lock".format(version=config["version"])
     threads: 1
     shell:
-        "touch {output}"
+        "ln -fnrs {input.tarballs} {output.tarballs} && "
+        "ln -fnrs {input.md5sum} {output.md5sum} && "
+        "ln -fnrs {input.sql} {output.sql} && "
+        "touch {output.lock}"
 
-rule database_export:
+rule mysql_export:
     input:
-        ".database_build_datasets",
-        ".database_build_cells"
+        ".mysql_build_datasets_{version}",
+        ".mysql_build_cells_{version}"
     output:
-        "aca.sql.gz"
+        "release/aca-{version}.sql.gz"
     threads: 1
     shell:
-        "mysqldump -u caozj -p aca | gzip -9 > {output}"
+        "mysqldump -u {config[db_user]} -p{config[db_passwd]} aca | gzip -9 > {output}"
 
-rule database_build_cells:
+rule mysql_build_cells:
     input:
-        expand("{notebook}/.finished", notebook=config["notebooks"]),
-        prev=".database_build_datasets",
+        prev=".mysql_build_datasets_{version}",
         script="build_db_cells.py"
     output:
-        ".database_build_cells"
+        ".mysql_build_cells_{version}",
     threads: 1
     script:
         "build_db_cells.py"
 
-rule database_build_datasets:
+rule mysql_build_datasets:
     input:
-        expand("{notebook}/.finished", notebook=config["notebooks"]),
-        init="init.sql",
-        script="build_db_datasets.py"
+        script="build_db_datasets.py",
+        md5sum="release/md5sum-{version}.txt",
+        history=".mysql_build_history_{version}"
     output:
-        ".database_build_datasets"
+        ".mysql_build_datasets_{version}"
     threads: 1
     script:
         "build_db_datasets.py"
 
-def build_finish_input(wildcards):
-    checkpoint_output = checkpoints.build.get(notebook=wildcards.notebook).output[0]
-    return expand(
-        "{notebook}/{item}.tar.gz",
-        notebook=checkpoint_output,
-        item=[
-            item for item in os.listdir(checkpoint_output)
-            if os.path.isdir(os.path.join(checkpoint_output, item))
-        ]
-    )
-
-rule build_finish:
+rule mysql_build_history:
     input:
-        build_finish_input
+        "release/md5sum-{version}.txt",
+        ".mysql_init_{version}"
     output:
-        "{notebook}/.finished"
+        ".mysql_build_history_{version}"
+    threads: 1
+    script:
+        "build_db_history.py"
+
+rule mysql_init:
+    input:
+        "init.sql"
+    output:
+        ".mysql_init_{version}"
     threads: 1
     shell:
+        "mysql -u {config[db_user]} -p{config[db_passwd]} < {input} && "
         "touch {output}"
 
-checkpoint build:
+rule md5sum:
+    input:
+        "release/tarballs-{version}"
+    output:
+        "release/md5sum-{version}.txt"
+    threads: 1
+    params:
+        current_time=lambda wildcards: datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    shell:
+        "(cd {input} && md5sum *.tar.gz) > {output} && "
+        "touch release/versions.txt && "
+        "sed -i '/{wildcards.version}/d' release/versions.txt && "
+        "echo -e '{wildcards.version}\t{params.current_time}' >> release/versions.txt"
+
+rule collect:
+    input:
+        expand("release/tmp/{item}.tar.gz", item=reverse_lookup.keys())
+    output:
+        directory("release/tarballs-{version}")
+    threads: 1
+    shell:
+        "mv release/tmp {output}"
+
+rule link:
+    input:
+        lambda wildcards: "build/tarballs/{notebook}/{item}.tar.gz".format(
+            notebook=reverse_lookup[wildcards.item],
+            item=wildcards.item
+        )
+    output:
+        "release/tmp/{item}.tar.gz"
+    threads: 1
+    shell:
+        "ln {input} {output}"
+
+rule compress:
+    input:
+        "build/{notebook}"
+    output:
+        "build/tarballs/{notebook}/{item}.tar.gz"
+    threads: 1
+    shell:
+        "GZIP=-n tar --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' "
+        "-czf {output} -C {input} --exclude 'std*.txt' {wildcards.item}"
+
+rule build:
     input:
         ipynb="{notebook}.ipynb",
         data=lambda wildcards: expand(
@@ -72,7 +162,8 @@ checkpoint build:
             item=config[wildcards.notebook]["input"]
         )
     output:
-        directory("{notebook,^[^./]+$}")
+        build=directory("build/{notebook}"),
+        html="{notebook}.html"
     log:
         "{notebook}.log"
     threads: 4
@@ -81,22 +172,4 @@ checkpoint build:
     shell:
         "jupyter nbconvert --to html " \
         "--ExecutePreprocessor.timeout=3600000 --allow-errors " \
-        "--execute {input.ipynb} --output {output}.html > {log} 2>&1"
-
-rule compress:
-    input:
-        content="{notebook}/{item}",
-        dir="tarballs"
-    output:
-        "{notebook}/{item}.tar.gz"
-    threads: 1
-    shell:  # Couple soft-linking with compression
-        "tar -czf {output} -C {wildcards.notebook} {wildcards.item} && rm -f tarballs/{wildcards.item}.tar.gz && "
-        "ln -s ../{wildcards.notebook}/{wildcards.item}.tar.gz tarballs/{wildcards.item}.tar.gz"
-
-rule mktarballs:
-    output:
-        directory("tarballs")
-    threads: 1
-    shell:
-        "mkdir {output}"
+        "--execute {input.ipynb} --output {output.html} > {log} 2>&1"

@@ -10,6 +10,11 @@ suppressPackageStartupMessages({
 })
 source("../Utilities/utils.R")
 
+snakemake@config[["method"]] <- c(
+    snakemake@config[["gene_space_method"]],
+    snakemake@config[["latent_space_method"]]
+)
+
 df <- read.csv(snakemake@input[["data"]], check.names = FALSE, stringsAsFactors = FALSE)
 df$dataset <- factor(df$dataset, levels = df %>%
     select(dataset, n_cell) %>%
@@ -31,8 +36,8 @@ color_mapping <- unlist(fromJSON(snakemake@input[["palette"]]))
 gp <- ggplot(df %>% sample_frac(), aes(
     x = mean_average_precision, y = seurat_alignment_score,
     col = method, shape = dimensionality
-)) + geom_point(alpha = 0.8, size = 2) + facet_wrap(~dataset) + scale_shape_manual(
-    values = c(0, 1, 2, 5, 6),
+)) + geom_point(alpha = 0.8, size = 2) + facet_wrap(~dataset, nrow = 2) + scale_shape_manual(
+    values = c(0, 1, 2, 5, 6), na.value = 7,
     # values = c(15, 16, 17, 18, 3),
     name = "Dimensionality"
 ) + scale_color_manual(
@@ -42,7 +47,19 @@ gp <- ggplot(df %>% sample_frac(), aes(
 ) + scale_y_continuous(
     name = "Seurat alignment score"
 ) + theme(strip.text = element_text(size = 8))
-ggsave(snakemake@output[["twoway"]], mod_style(gp), width = 5.5, height = 5.5)
+ggsave(snakemake@output[["twoway"]], mod_style(gp), width = 6, height = 5.5)
+
+gp <- ggplot(df %>% filter(method == "Cell BLAST") %>% sample_frac(), aes(
+    x = mean_average_precision, y = seurat_alignment_score,
+    col = rmbatch
+)) + geom_point(alpha = 0.8, size = 2) + facet_wrap(~dataset, nrow = 2) + scale_color_discrete(
+    name = expression(lambda[b])
+) + scale_x_continuous(
+    name = "Mean average precision"
+) + scale_y_continuous(
+    name = "Seurat alignment score"
+) + theme(strip.text = element_text(size = 8))
+ggsave(snakemake@output[["cb_elbow"]], mod_style(gp), width = 5, height = 5.5)
 
 df_opt <- df %>% mutate(
     ms_sum = 0.9 * mean_average_precision + 0.1 * seurat_alignment_score
@@ -55,19 +72,21 @@ df_opt <- df %>% mutate(
     rmbatch = rmbatch[which.max(ms_sum)]
 ) %>% as.data.frame()
 
+print(df_opt)
+
 df <- merge(df, df_opt)
 df_summarize_seed <- merge(df_summarize_seed, df_opt)
 
 gp <- ggplot(df_summarize_seed, aes(
     x = mean_average_precision, y = seurat_alignment_score, col = method
-)) + geom_point(size = 2.5, alpha = 0.8) + facet_wrap(~dataset) + scale_color_manual(
+)) + geom_point(size = 2.5, alpha = 0.8) + facet_wrap(~dataset, nrow = 2) + scale_color_manual(
     values = color_mapping, name = "Method"
 ) + scale_x_continuous(
     name = "Mean average precision"
 ) + scale_y_continuous(
     name = "Seurat alignment score"
 ) + theme(strip.text = element_text(size = 7))
-ggsave(snakemake@output[["twowayopt"]], mod_style(gp), width = 5.5, height = 5.8)
+ggsave(snakemake@output[["twowayopt"]], mod_style(gp), width = 6, height = 5.8)
 
 # gp <- ggplot(df_summarize_seed, aes(
 #     x = mean_average_precision, y = seurat_alignment_score,

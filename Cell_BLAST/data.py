@@ -1,30 +1,34 @@
-"""
+r"""
 Dataset utilities
 """
 
-import os
-import copy
 import collections
-import functools
 import concurrent.futures
+import copy
+import functools
+import os
+import typing
 
+import anndata
+import h5py
+import loompy
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.sparse
 import scipy.stats
-import h5py
+import seaborn as sns
 import sklearn.metrics
 
-
-from . import message
-from . import utils
-from . import config
+from . import config, utils
 
 
 class ExprDataSet(object):
 
-    """
-    Main data class, which is based on the data structure of ``AnnData``.
+    r"""
+    Main data class, which is based on the data structure of
+    :class:`anndata.AnnData`.
     Note that the data is always assumed to be scRNA-seq, so the stored
     matrix is always the expression matrix. The ``obs`` slot stores meta
     information of cells, and the ``var`` slot stores meta information of genes.
@@ -33,28 +37,29 @@ class ExprDataSet(object):
 
     Parameters
     ----------
-    exprs : numpy.ndarray, scipy.sparse.spmatrix
-        An :math:`obs \\times var` expression matrix in the form of
+    exprs
+        An :math:`obs \times var` expression matrix in the form of
         either a numpy array or a scipy sparse matrix.
-    obs : pandas.DataFrame
+    obs
         Cell meta table. Each row corresponds to a row in ``exprs``.
-    var : pandas.DataFrame
+    var
         Gene meta table. Each row corresponds to a column in ``exprs``.
-    uns : dict
+    uns
         Unstructured meta information, e.g. list of most informative genes.
 
     Examples
     --------
 
-    An ``ExprDataSet`` object can be constructed from an expression matrix, an
-    observation (cell) meta table, a variable (gene) meta table, and some
+    An :class:`ExprDataSet` object can be constructed from an expression matrix,
+    an observation (cell) meta table, a variable (gene) meta table, and some
     unstructured data:
 
     >>> data_obj = Cell_BLAST.data.ExprDataSet(exprs, obs, var, uns)
 
-    Or, if you have an ``AnnData`` object or a `LoomConnection` object
-    (to a loom file), you can directly convert them to an ``ExprDataSet``
-    object using the following methods:
+    Or, if you have an :class:`anndata.AnnData` object or a
+    :class:`loompy.loompy.LoomConnection` object (to a loom file), you can
+    directly convert them to an :class:`ExprDataSet` object using the following
+    methods:
 
     >>> data_obj = Cell_BLAST.data.ExprDataSet.from_anndata(anndata_obj)
     >>> data_obj = Cell_BLAST.data.ExprDataSet.from_loom(loomconnection_obj)
@@ -64,7 +69,7 @@ class ExprDataSet(object):
     >>> anndata_obj = data_obj.to_anndata()
     >>> loomconnection = data_obj.to_loom(filename)
 
-    ``ExprDataSet`` objects support many forms of slicing, including
+    :class:`ExprDataSet` objects support many forms of slicing, including
     numeric range, numeric index, boolean mask, and obs/var name selection:
 
     >>> subdata_obj = data_obj[0:10, np.arange(10)]
@@ -77,7 +82,7 @@ class ExprDataSet(object):
     original dataset, it will be filled with zeros in the returned dataset,
     with a warning message.
 
-    ``ExprDataSet`` objects also support saving and loading:
+    :class:`ExprDataSet` objects also support saving and loading:
 
     >>> data_obj.write_dataset("data.h5")
     >>> data_obj = Cell_BLAST.data.ExprDataSet.read_dataset("data.h5")
@@ -105,7 +110,10 @@ class ExprDataSet(object):
     >>> marker_dict = data_obj.fast_markers("cell_type")
     """
 
-    def __init__(self, exprs, obs, var, uns):
+    def __init__(
+            self, exprs: typing.Union[np.ndarray, scipy.sparse.spmatrix],
+            obs: pd.DataFrame, var: pd.DataFrame, uns: typing.Mapping
+    ) -> None:
         assert exprs.shape[0] == obs.shape[0] and exprs.shape[1] == var.shape[0]
         if scipy.sparse.issparse(exprs):
             self.exprs = exprs.tocsr()
@@ -116,59 +124,59 @@ class ExprDataSet(object):
         self.uns = uns
 
     @property
-    def X(self):  # For compatibility with `AnnData`
-        """
-        :math:`obs \\times var` expression matrix, same as ``exprs``
+    def X(self) -> typing.Union[np.ndarray, scipy.sparse.spmatrix]:  # For compatibility with `AnnData`
+        r"""
+        :math:`obs \times var` expression matrix, same as ``exprs``
         """
         return self.exprs
 
     @property
-    def obs_names(self):
-        """
+    def obs_names(self) -> pd.Index:
+        r"""
         Name of observations (cells)
         """
         return self.obs.index
 
     @obs_names.setter
-    def obs_names(self, new_names):
+    def obs_names(self, new_names: np.ndarray) -> None:
         assert len(new_names) == self.obs.shape[0]
         self.obs.index = new_names
 
     @property
-    def var_names(self):
-        """
+    def var_names(self) -> pd.Index:
+        r"""
         Name of variables (genes)
         """
         return self.var.index
 
     @var_names.setter
-    def var_names(self, new_names):
+    def var_names(self, new_names: np.ndarray) -> None:
         assert len(new_names) == self.var.shape[0]
         self.var.index = new_names
 
     @property
-    def shape(self):
-        """
-        Shape of dataset (:math:`obs \\times var`)
+    def shape(self) -> typing.Tuple[int, int]:
+        r"""
+        Shape of dataset (:math:`obs \times var`)
         """
         return self.exprs.shape
 
     @property
-    def latent(self):
-        """
+    def latent(self) -> np.ndarray:
+        r"""
         Latent space coordinate. Must have the same number of observations
         (cells) as the expression data.
         """
         mask = np.vectorize(lambda x: x.startswith("latent_"))(self.obs.columns)
         if np.any(mask):
-            return self.obs.loc[:, np.vectorize(lambda x: "latent_%d" % x)(
+            return self.obs.loc[:, np.vectorize(lambda x: f"latent_{x}")(
                 np.arange(mask.sum()) + 1
             )].values
         else:
             raise ValueError("No latent has been registered!")
 
     @latent.setter
-    def latent(self, latent):
+    def latent(self, latent: np.ndarray) -> None:
         for col in self.obs.columns:  # Remove previous result
             if col.startswith("latent_"):
                 del self.obs[col]
@@ -178,45 +186,46 @@ class ExprDataSet(object):
                 del self.obs[col]
         assert latent.shape[0] == self.shape[0]
         columns = np.vectorize(
-            lambda x: "latent_%d" % x
+            lambda x: f"latent_{x}"
         )(np.arange(latent.shape[1]) + 1)
         latent_df = pd.DataFrame(latent, index=self.obs_names, columns=columns)
         self.obs = pd.concat([self.obs, latent_df], axis=1)
 
-    def normalize(self, target=10000):
-        """
+    def normalize(self, target: float = 10000.0) -> "ExprDataSet":
+        r"""
         Obs-wise (cell-wise) normalization if the expression matrix.
         Note that only the matrix gets copied in the returned dataset, but meta
         tables are not (only references to meta tables in the original dataset).
 
         Parameters
         ----------
-        target : int
-            Target value of normalization, by default 10000.
+        target
+            Target value of normalization.
 
         Returns
         -------
-        normalized : ExprDataSet
+        normalized
             Normalized ExprDataSet object.
         """
         import sklearn.preprocessing
         tmp = self.copy()
-        tmp.exprs = sklearn.preprocessing.normalize(
-            tmp.exprs, norm="l1", copy=True
-        ) * target
+        if "__libsize__" not in self.obs.columns:
+            tmp.exprs = sklearn.preprocessing.normalize(
+                tmp.exprs, norm="l1", copy=True
+            ) * target
+        else:
+            normalizer = target / np.expand_dims(
+                tmp.obs["__libsize__"].to_numpy(), axis=1)
+            tmp.exprs = tmp.exprs.multiply(normalizer) \
+                if scipy.sparse.issparse(tmp.exprs) \
+                else tmp.exprs * normalizer
         return tmp
 
-    def __getitem__(self, slices):
-        """
+    def __getitem__(self, slices) -> "ExprDataSet":
+        r"""
         2-d slicing by numeric range, numeric index, boolean mask and obs/var names.
         """
-        if len(slices) == 2:
-            obs_slice, var_slice = slices
-            verbose = 1
-        elif len(slices) == 3:
-            obs_slice, var_slice, verbose = slices
-        else:  # pragma: no cover
-            raise ValueError("Invalid slicing!")
+        obs_slice, var_slice = slices
 
         # var splicing
         simple_flag = False
@@ -242,13 +251,12 @@ class ExprDataSet(object):
             new_var_names = np.setdiff1d(var_slice, self.var_names)
             all_var_names = np.concatenate([
                 self.var_names.values, new_var_names])
-            if new_var_names.size > 0 and verbose > 0:  # pragma: no cover
-                message.warning(
-                    "%d out of %d variables are not found, will be set to zero!" %
-                    (len(new_var_names), len(var_slice))
+            if new_var_names.size > 0:  # pragma: no cover
+                utils.logger.warning(
+                    "%d out of %d variables are not found, will be set to zero!",
+                    len(new_var_names), len(var_slice)
                 )
-                if verbose > 1:
-                    print(str(new_var_names.tolist()).strip("[]"))
+                utils.logger.info(str(new_var_names.tolist()).strip("[]"))
             idx = np.vectorize(
                 lambda x: np.where(all_var_names == x)[0][0]
             )(var_slice)
@@ -293,14 +301,14 @@ class ExprDataSet(object):
 
         return ExprDataSet(exprs=exprs, obs=obs, var=var, uns=self.uns)
 
-    def clean_duplicate_vars(self):
-        """
+    def clean_duplicate_vars(self) -> "ExprDataSet":
+        r"""
         Clean up variables to preserve only the first occurrence of
         duplicated variables.
 
         Returns
         -------
-        cleaned : ExprDataSet
+        cleaned
             An ExprDataSet object with duplicated variables removed.
         """
         unique_vars, duplicate_mask = \
@@ -312,26 +320,145 @@ class ExprDataSet(object):
                 unique_vars.add(item)
         return self[:, duplicate_mask]
 
-    def get_meta_or_var(self, names, normalize_var=False, log_var=False):
+    def find_variable_genes(
+            self,
+            x_low_cutoff: float = 0.1,
+            x_high_cutoff: float = 8.0,
+            y_low_cutoff: float = 1.0,
+            y_high_cutoff: float = np.inf,
+            num_bin: int = 20,
+            binning_method: str = "equal_frequency",
+            grouping: typing.Optional[str] = None,
+            min_group_frac: float = 0.5,
+    ) -> typing.Tuple[
+        typing.List[str],
+        typing.Union[matplotlib.axes.Axes, typing.Mapping[str, matplotlib.axes.Axes]]
+    ]:
+        r"""
+        A reimplementation of the Seurat v2 "mean.var.plot" gene selection
+        method in the "FindVariableGenes" function, with the extended ability
+        of selecting variable genes within specified groups of cells and then
+        combine results of individual groups. This is useful to minimize batch
+        effect during feature selection.
+
+        Parameters
+        ----------
+        x_low_cutoff
+            Minimal log mean cutoff
+        x_high_cutoff
+            Maximal log mean cutoff
+        y_low_cutoff
+            Minimal log VMR cutoff
+        y_high_cutoff
+            Maximal log VMR cutoff
+        num_bin
+            Number of bins based on mean expression.
+        binning_method
+            How binning should be done based on mean expression.
+            Available choices include {"equal_width", "equal_frequency"}.
+        grouping
+            Specify a column in the ``obs`` table that splits cells into
+            several groups. Gene selection is performed in each group separately
+            and results are combined afterwards.
+        min_group_frac
+            The minimal fraction of groups in which a gene must be selected
+            for it to be kept in the final result.
+
+        Returns
+        -------
+        list
+            A list of selected variables
+        ax
+            VMR plot (a dict of plots if grouping is specified)
         """
+        if grouping is not None:
+            selected_dict, ax_dict = {}, {}
+            groups = np.unique(self.obs[grouping])
+            for group in groups:
+                result = self[
+                    self.obs[grouping] == group, :
+                ].find_variable_genes(
+                    x_low_cutoff=x_low_cutoff, x_high_cutoff=x_high_cutoff,
+                    y_low_cutoff=y_low_cutoff, y_high_cutoff=y_high_cutoff,
+                    num_bin=num_bin, binning_method=binning_method
+                )
+                selected_dict[group] = result[0]
+                ax_dict[group] = result[1]
+            selected = np.concatenate(list(selected_dict.values()))
+            selected_unique, selected_count = np.unique(selected, return_counts=True)
+            selected = selected_unique[selected_count >= min_group_frac * groups.size]
+            return selected, ax_dict
+
+        exprs = self.normalize().exprs
+        mean = np.asarray(np.mean(exprs, axis=0)).ravel()
+        var = np.asarray(np.mean(
+            exprs.power(2) if scipy.sparse.issparse(exprs)
+            else np.square(exprs),
+            axis=0
+        )).ravel() - np.square(mean)
+        log_mean = np.log1p(mean)
+        log_vmr = np.log(var / mean)
+        log_vmr[np.isnan(log_vmr)] = 0
+        if binning_method == "equal_width":
+            log_mean_bin = pd.cut(log_mean, num_bin)
+        elif binning_method == "equal_frequency":
+            log_mean_bin = pd.cut(
+                log_mean, [-1] + np.percentile(
+                    log_mean[log_mean > 0], np.linspace(0, 100, num_bin)
+                ).tolist()
+            )
+        else:
+            raise ValueError("Invalid binning method!")
+        summary_df = pd.DataFrame({
+            "log_mean": log_mean,
+            "log_vmr": log_vmr,
+            "log_mean_bin": log_mean_bin
+        }, index=self.var_names)
+        summary_df["log_vmr_scaled"] = summary_df.loc[
+            :, ["log_vmr", "log_mean_bin"]
+        ].groupby("log_mean_bin").transform(lambda x: (x - x.mean()) / x.std())
+        summary_df["log_vmr_scaled"].fillna(0, inplace=True)
+        selected = summary_df.query(
+            f"log_mean > {x_low_cutoff} & log_mean < {x_high_cutoff} & "
+            f"log_vmr_scaled > {y_low_cutoff} & log_vmr_scaled < {y_high_cutoff}"
+        )
+        summary_df["selected"] = np.in1d(summary_df.index, selected.index)
+
+        _, ax = plt.subplots(figsize=(7, 7))
+        ax = sns.scatterplot(
+            x="log_mean", y="log_vmr_scaled", hue="selected",
+            data=summary_df, edgecolor=None, s=5, ax=ax
+        )
+        for _, row in selected.iterrows():
+            ax.text(
+                row["log_mean"], row["log_vmr_scaled"], row.name,
+                size="x-small", ha="center", va="center"
+            )
+        ax.set_xlabel("Average expression")
+        ax.set_ylabel("Dispersion")
+        return selected.index.to_numpy().tolist(), ax
+
+    def get_meta_or_var(
+            self, names: typing.List[str], normalize_var: bool = False,
+            log_var: bool = False
+    ) -> pd.DataFrame:
+        r"""
         Get either cell meta information (specified by column names in
         the ``obs`` table) or gene expression values in the expression matrix
         (specified by gene names).
 
         Parameters
         ----------
-        names : list
+        names
             List of names that specifies meta information / genes to be fetched.
-        normalize_var : bool
-            Whether to do cell-normalization before fetching variable values,
-            by default False.
-        log_var : bool
-            Whether to apply log transform for fetched variable values,
-            by default False.
+        normalize_var
+            Whether to do cell-normalization before fetching variable values.
+        log_var
+            Whether to apply log transform for fetched variable values.
 
         Returns
         -------
-        fetched : pandas.DataFrame
+        fetched
             Fetched result.
         """
         meta_names = np.intersect1d(names, self.obs.columns)
@@ -348,18 +475,18 @@ class ExprDataSet(object):
             result = pd.concat([result, var], axis=1)
         return result.loc[:, names]
 
-    def copy(self, deep=False):
-        """
+    def copy(self, deep: bool = False) -> "ExprDataSet":
+        r"""
         Produce a copy of the dataset.
 
         Parameters
         ----------
-        deep : bool
-            Whether to perform deep copy, by default False.
+        deep
+            Whether to perform deep copy.
 
         Returns
         -------
-        copied : ExprDataSet
+        copied
             Copy of the dataset.
         """
         if deep:
@@ -369,53 +496,56 @@ class ExprDataSet(object):
             )
         return ExprDataSet(self.exprs, self.obs, self.var, self.uns)
 
-    def write_dataset(self, filename):
-        """
+    def write_dataset(self, filename: str) -> None:
+        r"""
         Write the dataset to a file.
 
         Parameters
         ----------
-        filename : str
+        filename
             File to be written (content in hdf5 format).
         """
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
+        h5opts = {**config.H5_COMPRESS_OPTS, **config.H5_TRACK_OPTS}
         with h5py.File(filename, "w") as f:
             if scipy.sparse.issparse(self.exprs):
                 self.exprs.sort_indices()  # Compatibility with R
                 g = f.create_group("exprs")
-                g.create_dataset("data", data=self.exprs.data, **config.H5OPTS)
-                g.create_dataset("indices", data=self.exprs.indices, **config.H5OPTS)
-                g.create_dataset("indptr", data=self.exprs.indptr, **config.H5OPTS)
-                g.create_dataset("shape", data=self.exprs.shape, **config.H5OPTS)
+                g.create_dataset("data", data=self.exprs.data, **h5opts)
+                g.create_dataset("indices", data=self.exprs.indices, **h5opts)
+                g.create_dataset("indptr", data=self.exprs.indptr, **h5opts)
+                g.create_dataset("shape", data=self.exprs.shape, **h5opts)
             else:
-                f.create_dataset("exprs", data=self.exprs, **config.H5OPTS)
-            f.create_dataset("obs_names", data=utils.encode(self.obs_names.values), **config.H5OPTS)
-            f.create_dataset("var_names", data=utils.encode(self.var_names.values), **config.H5OPTS)
+                f.create_dataset("exprs", data=self.exprs, **h5opts)
+            f.create_dataset("obs_names", data=utils.encode(self.obs_names.values), **h5opts)
+            f.create_dataset("var_names", data=utils.encode(self.var_names.values), **h5opts)
             dict_to_group(df_to_dict(self.obs), f.create_group("obs"))
             dict_to_group(df_to_dict(self.var), f.create_group("var"))
             dict_to_group(self.uns, f.create_group("uns"))
 
     @classmethod
-    def read_dataset(cls, filename, sparsify=False, skip_exprs=False):
-        """
+    def read_dataset(
+            cls, filename: str, sparsify: bool = False,
+            skip_exprs: bool = False
+    ) -> "ExprDataSet":
+        r"""
         Read dataset from file (saved by ``write_dataset``).
 
         Parameters
         ----------
-        filename : str
+        filename
             File to read from (content in hdf5 format).
-        sparsify : bool
-            Whether to coerce the expression matrix into sparse format,
-            by default False.
-        skip_exprs : bool
+        sparsify
+            Whether to coerce the expression matrix into sparse format.
+        skip_exprs
             Whether to skip reading the expression matrix (fill with all
-            zeros instead), by default False. This option is for accelerating
-            data reading in case if only the meta information are needed.
+            zeros instead). This option is for accelerating data reading
+            in case if only the meta information are needed.
 
         Returns
         -------
-        loaded_dataset : ExprDataSet
+        loaded_dataset
             An ExprDataSet object loaded from the file.
         """
         with h5py.File(filename, "r") as f:
@@ -445,31 +575,28 @@ class ExprDataSet(object):
                 mat = scipy.sparse.csr_matrix((obs.shape[0], var.shape[0]))
         return cls(exprs=mat, obs=obs, var=var, uns=uns)
 
-    def map_vars(self, mapping, map_uns_slots=None, verbose=1):
-        """
+    def map_vars(
+            self, mapping: pd.DataFrame,
+            map_uns_slots: typing.Optional[typing.List[str]] = None
+    ) -> "ExprDataSet":
+        r"""
         Map variables of the dataset to some other terms,
         e.g. gene ortholog groups, or orthologous genes in another species.
 
         Parameters
         ----------
-        mapping : pandas.DataFrame
+        mapping
             A 2-column data frame defining variable name mapping. First column
             is source variable name and second column is target variable name.
-        map_uns_slots : list
+        map_uns_slots
             Assuming variable subsets, e.g. most informative genes,
             are stored in the ``uns`` slot, this parameter specifies which slots
-            in ``uns`` should also be mapped, by default None.
+            in ``uns`` should also be mapped.
             Note that ``uns`` slots not specified here will be left as is.
-        verbose : {0, 1, 2}
-            If ``verbose=0``, no warning message will be printed.
-            If ``verbose=1``, the number of source/target items that are
-            ambiguously mapped will be reported.
-            If ``verbose=2``, a list of such ambiguous items will be reported.
-            Default verbosity level is 1.
 
         Returns
         -------
-        mapped : Cell_BLAST.data.ExprDataSet
+        mapped
             Mapped dataset.
         """
         # Convert to mapping matrix
@@ -489,16 +616,14 @@ class ExprDataSet(object):
         # Sanity check
         amb_src_mask = np.asarray(mapping.sum(axis=1)).squeeze() > 1
         amb_tgt_mask = np.asarray(mapping.sum(axis=0)).squeeze() > 1
-        if verbose > 0 and amb_src_mask.sum() > 0:  # pragma: no cover
-            message.warning("%d ambiguous source items found!" %
-                            amb_src_mask.sum())
-            if verbose > 1:
-                print(source[amb_src_mask].tolist())
-        if verbose > 0 and amb_tgt_mask.sum() > 0:  # pragma: no cover
-            message.warning("%d ambiguous target items found!" %
-                            amb_tgt_mask.sum())
-            if verbose > 1:
-                print(target[amb_tgt_mask].tolist())
+        if amb_src_mask.sum() > 0:  # pragma: no cover
+            utils.logger.warning("%d ambiguous source items found!",
+                                 amb_src_mask.sum())
+            utils.logger.info(str(source[amb_src_mask].tolist()))
+        if amb_tgt_mask.sum() > 0:  # pragma: no cover
+            utils.logger.warning("%d ambiguous target items found!",
+                                 amb_tgt_mask.sum())
+            utils.logger.info(str(target[amb_tgt_mask].tolist()))
 
         # Compute new expression matrix
         new_exprs = self.exprs @ mapping
@@ -524,36 +649,32 @@ class ExprDataSet(object):
         return ExprDataSet(new_exprs, self.obs, new_var, new_uns)
 
     @classmethod
-    def merge_datasets(cls, dataset_dict, meta_col=None,
-                       merge_uns_slots=None, verbose=1):
-        """
+    def merge_datasets(
+            cls, dataset_dict: typing.Mapping[str, "ExprDataSet"],
+            meta_col: typing.Optional[str] = None,
+            merge_uns_slots: typing.Optional[typing.List[str]] = None
+    ) -> "ExprDataSet":
+        r"""
         Merge multiple dataset objects into a single "meta-dataset".
 
         Parameters
         ----------
-        dataset_dict : dict
+        dataset_dict
             A dict of ExprDataSet objects. Dict keys will be used as values in
             ``meta_col`` (see ``meta_col``).
-        meta_col : str
+        meta_col
             Name of a new column to be added to ``obs`` table of the merged
             ExprDataSet object, which can be used for distinguishing cells from
-            each dataset, by default None, meaning that no such column
-            will be added.
-        merge_uns_slots : list
+            each dataset. If not specified, no such column will be added.
+        merge_uns_slots
             Assuming variable subsets, e.g. most informative genes,
             are stored in the ``uns`` slot, this parameter specifies the
-            variable subsets to be merged, by default None.
+            variable subsets to be merged.
             Note that ``uns`` slots not specified here will be discarded.
-        verbose : {0, 1, 2}
-            If ``verbose=0``, no warning message will be printed.
-            If ``verbose=1``, the number of genes in the gene union that's
-            missing in each dataset will be reported.
-            If ``verbose=2``, a list of such missing genes in each dataset
-            will be reported.
 
         Returns
         -------
-        merged_dataset : ExprDataSet
+        merged_dataset
             Merged dataset.
         """
         dataset_dict = collections.OrderedDict(dataset_dict)
@@ -564,11 +685,10 @@ class ExprDataSet(object):
 
         for item in dataset_dict:
             dataset_dict[item] = dataset_dict[item].copy(deep=True)[
-                :, var_union, verbose
+                :, var_union
             ]  # Avoid contaminating original datasets
 
-        if verbose > 0:
-            message.info("Merging uns slots...")
+        utils.logger.info("Merging uns slots...")
         if merge_uns_slots is None:
             merge_uns_slots = []
         merged_slot = {}
@@ -579,8 +699,7 @@ class ExprDataSet(object):
             merged_slot[slot] = np.intersect1d(
                 functools.reduce(np.union1d, merged_slot[slot]), var_intersect)
 
-        if verbose > 0:
-            message.info("Merging var data frame...")
+        utils.logger.info("Merging var data frame...")
         merged_var = []
         for item in dataset_dict:
             var = dataset_dict[item].var.reindex(var_union)
@@ -588,20 +707,18 @@ class ExprDataSet(object):
             merged_var.append(var)
         merged_var = pd.concat(merged_var, axis=1)
 
-        if verbose > 0:
-            message.info("Merging obs data frame...")
+        utils.logger.info("Merging obs data frame...")
         merged_obs = []
         for key in dataset_dict.keys():
             if meta_col:
                 dataset_dict[key].obs[meta_col] = key
             merged_obs.append(dataset_dict[key].obs)
-        merged_obs = pd.concat(merged_obs)
+        merged_obs = pd.concat(merged_obs, sort=True)
 
-        if verbose > 0:
-            message.info("Merging expression matrix...")
+        utils.logger.info("Merging expression matrix...")
         if np.any([
-            scipy.sparse.issparse(dataset.exprs)
-            for dataset in dataset_dict.values()
+                scipy.sparse.issparse(dataset.exprs)
+                for dataset in dataset_dict.values()
         ]):
             merged_exprs = scipy.sparse.vstack([
                 scipy.sparse.csr_matrix(dataset.exprs)
@@ -618,8 +735,9 @@ class ExprDataSet(object):
         )
 
     def _prepare_latent_visualization(
-        self, method, random_seed=config._USE_GLOBAL, reuse=True, **kwargs
-    ):
+            self, method: str, random_seed: int = config._USE_GLOBAL,
+            reuse: bool = True, **kwargs
+    ) -> None:
         import sklearn.manifold
         import umap
 
@@ -639,75 +757,79 @@ class ExprDataSet(object):
                 mapper = umap.UMAP(random_state=random_seed, **kwargs)
             else:
                 raise ValueError("Unknown method!")
-            message.info("Computing %s..." % method)
+            utils.logger.info("Computing %s...", method)
             coord = mapper.fit_transform(self.latent)
             columns = np.vectorize(
-                lambda x, method=method: "%s%d" % (method, x)
+                lambda x, method=method: f"{method}{x}"
             )(np.arange(coord.shape[1]) + 1)
             coord_df = pd.DataFrame(coord, index=self.obs_names, columns=columns)
             self.obs = pd.concat([self.obs, coord_df], axis=1)
         else:
-            message.info("Using cached %s..." % method)
+            utils.logger.info("Using cached %s...", method)
 
     def visualize_latent(
-        self, hue=None, style=None, method="tSNE", reuse=True, shuffle=True, sort=False,
-        ascending=True, size=3, width=7, height=7,
-        random_seed=config._USE_GLOBAL, ax=None,
-        dr_kws=None, scatter_kws=None
-    ):
-        """
+            self, hue: typing.Optional[str] = None,
+            style: typing.Optional[str] = None,
+            method: str = "tSNE", reuse: bool = True, shuffle: bool = True,
+            sort: bool = False, ascending: bool = True, size: float = 3.0,
+            width: float = 7.0, height: float = 7.0,
+            random_seed: int = config._USE_GLOBAL,
+            ax: typing.Optional[matplotlib.axes.Axes] = None,
+            dr_kws: typing.Optional[typing.Mapping] = None,
+            scatter_kws: typing.Optional[typing.Mapping] = None
+    ) -> matplotlib.axes.Axes:
+        r"""
         Visualize latent space
 
         Parameters
         ----------
-        hue : str
+        hue
             Specifies a column in the ``obs`` table or a gene name to use as
-            hue of the data points, by default None.
-        method : {"tSNE", "UMAP", None}
-            Specifies the dimension reduction algorithm for visualization,
-            by default "tSNE". If ``None`` is specified, the first two latent
+            hue of the data points.
+        style
+            Specifies a column in the ``obs`` table to use as style of data
+            points.
+        method
+            Should be among {"tSNE", "UMAP", None}.
+            Specifies the dimension reduction algorithm for visualization.
+            If ``None`` is specified, the first two latent
             dimensions will be used for visualization.
-        reuse : bool
-            Whether to reuse existing visualization coordinates,
-            by default True.
-        shuffle : bool
-            Whether to shuffle data points before plotting, by default True.
-        sort : bool
-            Whether to sort points according to ``hue`` before plotting,
-            by default False. If set to true, ``shuffle`` takes no effect.
-        ascending : bool
-            Whether sorting is in the ascending order, by default True.
+        reuse
+            Whether to reuse existing visualization coordinates.
+        shuffle
+            Whether to shuffle data points before plotting.
+        sort
+            Whether to sort points according to ``hue`` before plotting.
+            If set to true, ``shuffle`` takes no effect.
+        ascending
+            Whether sorting is in the ascending order.
             Only effective when ``sort`` is set to true.
-        size : int
-            Point size, by default 3.
-        width : float
-            Figure width, by default 7.
-        height : float
-            Figure height, by default 7.
-        random_seed : int
+        size
+            Point size.
+        width
+            Figure width.
+        height
+            Figure height.
+        random_seed
             Random seed used in dimension reduction algorithm. If not specified,
-            ``Cell_BLAST.config.RANDOM_SEED`` will be used, which defaults
+            :data:`config.RANDOM_SEED` will be used, which defaults
             to None.
-        ax : matplotlib.axes.Axes
-            Specifies an existing axes to plot onto, by default None.
-            If specified, ``width`` and ``height`` take no effect.
-        dr_kws: dict
+        ax
+            Specifies an existing axes to plot onto. If specified,
+            ``width`` and ``height`` take no effect.
+        dr_kws
             Keyword arguments passed to the dimension reduction algorithm,
             according to ``method``.
-            If ``method`` is "tSNE", will be passed to ``sklearn.manifold.TSNE``.
-            If ``method`` is "UMAP", will be passed to ``umap.UMAP``.
-        scatter_kws : dict
-            Keyword arguments to be passed to ``seaborn.scatterplot``,
-            by default None.
+            If ``method`` is "tSNE", will be passed to :class:`sklearn.manifold.TSNE`.
+            If ``method`` is "UMAP", will be passed to :class:`umap.UMAP`.
+        scatter_kws
+            Keyword arguments to be passed to :func:`sns.scatterplot`.
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
+        ax
             Visualization plot.
         """
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-
         if dr_kws is None:
             dr_kws = dict()
         if scatter_kws is None:
@@ -723,7 +845,7 @@ class ExprDataSet(object):
             method = "latent_"
         if ax is None:
             _, ax = plt.subplots(figsize=(width, height))
-        fetch = ["%s1" % method, "%s2" % method]
+        fetch = [f"{method}1", f"{method}2"]
         if hue is not None:
             fetch.append(hue)
         if style is not None:
@@ -734,7 +856,7 @@ class ExprDataSet(object):
         if hue is not None and sort:
             df = df.sort_values(hue, ascending=ascending)
         ax = sns.scatterplot(
-            x="%s1" % method, y="%s2" % method,
+            x=f"{method}1", y=f"{method}2",
             hue=hue, style=style, s=size, data=df, edgecolor=None, ax=ax,
             **scatter_kws
         )
@@ -750,38 +872,39 @@ class ExprDataSet(object):
         return ax
 
     def obs_correlation_heatmap(
-        self, group=None, used_vars=None,
-        cluster_method="complete", width=10, height=10, **kwargs
-    ):
-        """
+            self, group: typing.Optional[str] = None,
+            used_vars: typing.Optional[typing.List[str]] = None,
+            cluster_method: str = "complete",
+            width: float = 10.0, height: float = 10.0, **kwargs
+    ) -> sns.matrix.ClusterGrid:
+        r"""
         Correlation heatmap of each observation.
 
         Parameters
         ----------
-        group : str
+        group
             Specifies a column in the ``obs`` table which will be used to label
-            rows and columns, by default None.
-        used_vars : array_like
-            Specifies variables used to compute correlation, by default None,
+            rows and columns.
+        used_vars
+            Specifies variables used to compute correlation. If not specified,
             meaning all variables will be used.
-        cluster_method : str
-            Clustering method, by default "complete". See
-            ``scipy.cluster.hierarchy.linkage`` for available options.
-        width : float
-            Figure width, by default 10.
-        height : float
-            Figure height, by default 10.
-        **kwargs
+        cluster_method
+            Clustering method. See :func:``scipy.cluster.hierarchy.linkage``
+            for available options.
+        width
+            Figure width.
+        height
+            Figure height.
+        kwargs
             Additional keyword arguments will be passed to
-            ``seaborn.clustermap``.
+            :func:`sns.clustermap`.
 
         Returns
         -------
-        grid : seaborn.matrix.ClusterGrid
+        grid
             Visualization plot.
         """
         import matplotlib.patches as mpatches
-        import seaborn as sns
         import scipy.cluster
 
         dataset = self if used_vars is None else self[:, used_vars]
@@ -816,42 +939,42 @@ class ExprDataSet(object):
         return grid
 
     def violin(
-        self, group, var, normalize_var=True, width=7, height=7,
-        ax=None, strip_kws=None, violin_kws=None
-    ):
-        """
+            self, group: str, var: str, normalize_var: bool = True,
+            width: float = 7, height: float = 7,
+            ax: typing.Optional[matplotlib.axes.Axes] = None,
+            strip_kws: typing.Optional[typing.Mapping] = None,
+            violin_kws: typing.Optional[typing.Mapping] = None
+    ) -> matplotlib.axes.Axes:
+        r"""
         Violin plot across obs groups.
 
         Parameters
         ----------
-        group : str
+        group
             Specifies a column in the ``obs`` table used for cell grouping.
-        var : str
+        var
             Variable name.
-        normalize_var : bool
-            Whether to perform cell normalization, by default True.
-        width : float
-            Figure width, by default 10.
-        height : float
-            Figure height, by default 10.
-        ax : matplotlib.axes.Axes
-            Specifies an existing axes to plot onto, by default None.
-            If specified, ``width`` and ``height`` take no effect.
-        strip_kws : dict
-            Additional keyword arguments will be passed to ``seaborn.stripplot``.
-        violin_kws : dict
-            Additional keyword arguments will be passed to ``seaborn.violinplot``.
+        normalize_var
+            Whether to perform cell normalization.
+        width
+            Figure width.
+        height
+            Figure height.
+        ax
+            Specifies an existing axes to plot onto. If specified,
+            ``width`` and ``height`` take no effect.
+        strip_kws
+            Additional keyword arguments will be passed to :func:`sns.stripplot`.
+        violin_kws
+            Additional keyword arguments will be passed to :func:`sns.violinplot`.
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
+        ax
             Visualization figure.
         """
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-
-        strip_kws = {} if strip_kws is None else strip_kws
-        violin_kws = {} if violin_kws is None else violin_kws
+        strip_kws = strip_kws or {}
+        violin_kws = violin_kws or {}
 
         df = self.get_meta_or_var(
             [group, var],
@@ -872,38 +995,40 @@ class ExprDataSet(object):
         return ax
 
     def annotation_confidence(
-        self, annotation, used_vars=None, metric="cosine",
-        return_group_percentile=True
-    ):
-        """
+            self, annotation: typing.Union[str, typing.List[str]],
+            used_vars: typing.Optional[typing.Union[str, typing.List[str]]] = None,
+            metric: str = "cosine", return_group_percentile: bool = True
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
+        r"""
         Compute annotation confidence of each obs (cell) based on
         sample silhouette score.
 
         Parameters
         ----------
-        annotation : array_like, str
+        annotation
             Specifies annotation for which confidence will be computed.
             If passed an array-like, it should be 1 dimensional with length
             equal to obs number, and will be used directly as annotation.
             If passed a string, it should be a column name in ``obs``.
-        used_vars : str or array_like
+        used_vars
             Specifies the variable set used to evaluate ``metric``,
-            by default None, meaning all variables are used. If given a string,
+            If not specified, all variables are used. If given a string,
             it should be a slot in `uns`. If given a 1-d array, it should
             contain variable names to be used.
-        metric : str
-            Specifies distance metric used to compute sample silhouette scores,
-            by default "cosine".
-        return_group_percentile : bool
+        metric
+            Specifies distance metric used to compute sample silhouette scores.
+            See :func:`sklearn.metrics.silhouette_samples` for available
+            options.
+        return_group_percentile
             Whether to return within group confidence percentile, instead of
-            raw sample silhouette score, by default True.
+            raw sample silhouette score.
 
         Returns
         -------
-        confidence : numpy.ndarray
+        confidence
             1 dimensional numpy array containing annotation confidence for
             each obs.
-        group_percentile : numpy.ndarray
+        group_percentile
             1 dimensional numpy array containing within-group percentile
             for each obs.
         """
@@ -929,53 +1054,53 @@ class ExprDataSet(object):
             return confidence, normalized_confidence
         return confidence
 
-    # TODO: use numba to further increase speed and achieve full parallel computing
-    def fast_markers(self, group, used_genes=None,
-                     alternative="two-sided", multitest="bonferroni",
-                     min_pct=0.1, min_pct_diff=-np.inf,
-                     logfc_threshold=0.25, pseudocount=1,
-                     n_jobs=1):
-        """
+    def fast_markers(
+            self, group: str,
+            used_genes: typing.Optional[typing.List[str]] = None,
+            alternative: str = "two-sided", multitest: str = "bonferroni",
+            min_pct: float = 0.1, min_pct_diff: float = -np.inf,
+            logfc_threshold: float = 0.25, pseudocount: float = 1.0,
+            n_jobs: int = 1
+    ) -> typing.Mapping[str, pd.DataFrame]:
+        r"""
         Find markers for each group by one-vs-rest Wilcoxon rank sum test.
         This is a fast implementation of the ``FindAllMarkers`` function
         in Seurat v2.
 
         Parameters
         ----------
-        group : str
+        group
             Specifies a column in ``obs`` that determines cell grouping.
-        used_genes : array_like
+        used_genes
             A sequence of genes in which to search for markers.
-        alternative : {"two-sided", "greater", "less"}
-            Alternative hypothesis, by default "two-sided".
-        multitest : str
-            Method of multiple test p-value correction, by default "bonferroni".
-            Check ``statsmodels.stats.multitest.multipletests`` for available
+        alternative
+            Alternative hypothesis, should be among
+            {"two-sided", "greater", "less"}.
+        multitest
+            Method of multiple test p-value correction. Check
+            :func:`statsmodels.stats.multitest.multipletests` for available
             options.
-        min_pct : float
+        min_pct
             Minimal percent of cell expressing gene of interest, either in
-            group or rest, for it to be considered in statistical test,
-            by default 0.1.
-        min_pct_diff : float
+            group or rest, for it to be considered in statistical test.
+        min_pct_diff
             Minimal percent difference of cell expressing gene of interest
-            in group and rest, for it to be considered in statistical test,
-            by default -np.inf.
-        logfc_threshold : float
+            in group and rest, for it to be considered in statistical test.
+        logfc_threshold
             Minimal log fold change in average expression level of gene
             of interest, between group and rest, for it to be considered in
-            statistical test, by default 0.25.
-        pseudocount : float
-            Pseudocount to be added when computing log fold change,
-            by default 1.
-        n_jobs : int
+            statistical test.
+        pseudocount
+            Pseudocount to be added when computing log fold change.
+        n_jobs
             Number of parallel running threads to use.
 
         Returns
         -------
-        summary : dict
-            Each element, named by cell group, is a pandas DataFrame containing
+        summary
+            Each element, named by cell group, is a table containing
             differential expression results.
-            Columns of each DataFrame are:
+            Columns of each table are:
             "pct_1": percent of cells expressing the gene in group of interest
             "pct_2": percent of cells expressing the gene in rest
             "logfc": log fold change of mean expression between group and rest
@@ -997,10 +1122,10 @@ class ExprDataSet(object):
         n_xy_plus = n_x + n_y
 
         def ranksum_thread(vec):
-            """
+            r"""
             Wilcoxon rank sum test for one feature
             Adapted from R functions:
-                `Seurat::FindMarkers` and `stats::wilcox.test`
+                ``Seurat::FindMarkers`` and ``stats::wilcox.test``
             """
 
             # Preparation
@@ -1112,55 +1237,53 @@ class ExprDataSet(object):
             }, index=used_genes).sort_values(by=["z"], ascending=False)
         return summary
 
-    def to_anndata(self):
-        """
-        Convert a ``Cell_BLAST.data.ExprDataSet`` object to an
-        ``anndata.AnnData`` object.
+    def to_anndata(self) -> anndata.AnnData:
+        r"""
+        Convert a :class:`ExprDataSet` object to an
+        :class:`anndata.AnnData` object.
 
         Returns
         -------
-        dataset : anndata.AnnData
-            Resulting ``anndata.AnnData`` object.
+        dataset
+            Resulting :class:`anndata.AnnData` object.
         """
-        import anndata
         return anndata.AnnData(
             X=self.exprs, obs=self.obs, var=self.var, uns=dict(self.uns))
 
     @classmethod
-    def from_anndata(cls, ad):
-        """
-        Create a ``Cell_BLAST.data.ExprDataSet`` object from an existing
-        ``anndata.AnnData`` object.
+    def from_anndata(cls, ad: anndata.AnnData) -> "ExprDataSet":
+        r"""
+        Create a :class:`ExprDataSet` object from an existing
+        :class:`anndata.AnnData` object.
 
         Parameters
         ----------
-        ad : anndata.AnnData
-            An existing ``anndata.AnnData`` object.
+        ad
+            An existing :class:`anndata.AnnData` object.
 
         Returns
         -------
-        dataset : Cell_BLAST.data.ExprDataSet
-            Resulting ``Cell_BLAST.data.ExprDataSet`` object.
+        dataset
+            Resulting :class:`ExprDataSet` object.
         """
         return cls(ad.X, ad.obs, ad.var, ad.uns)
 
-    def to_loom(self, file):
-        """
-        Convert a ``Cell_BLAST.data.ExprDataSet`` object to a
-        ``loompy.loompy.LoomConnection`` object. Note that data will be
+    def to_loom(self, file: str) -> loompy.loompy.LoomConnection:
+        r"""
+        Convert a :class:`ExprDataSet` object to a
+        :class:`loompy.loompy.LoomConnection` object. Note that data will be
         written to a loom file specified by ``file`` in this process.
 
         Parameters
         ----------
-        file : str
+        file
             Specifies the loom file to be written
 
         Returns
         -------
-        lm : loompy.loompy.LoomConnection
-            Resulting ``loompy`` connection to the loom file.
+        lm
+            Resulting connection to the loom file.
         """
-        import loompy
         assert "var_name" not in self.var.columns and \
             "obs_name" not in self.obs.columns
         loompy.create(file, self.exprs.T, {**{
@@ -1173,20 +1296,20 @@ class ExprDataSet(object):
         return loompy.connect(file)
 
     @classmethod
-    def from_loom(cls, lm):
-        """
-        Create a ``Cell_BLAST.data.ExprDataSet`` object from an existing
-        ``loompy.loompy.LoomConnection`` object.
+    def from_loom(cls, lm: loompy.loompy.LoomConnection) -> "ExprDataSet":
+        r"""
+        Create a :class:`ExprDataSet` object from an existing
+        :class:`loompy.loompy.LoomConnection` object.
 
         Parameters
         ----------
-        lm : loompy.loompy.LoomConnection
-            An existing ``loompy.loompy.LoomConnection`` object.
+        lm
+            An existing :class:`loompy.loompy.LoomConnection` object.
 
         Returns
         -------
-        dataset : Cell_BLAST.data.ExprDataSet
-            Resulting ``Cell_BLAST.data.ExprDataSet`` object.
+        dataset
+            Resulting :class:`ExprDataSet` object.
         """
         return cls(
             lm[:, :].T,
@@ -1201,8 +1324,8 @@ class ExprDataSet(object):
             {}
         )
 
-    def write_table(self, filename, orientation="cg", **kwargs):
-        """
+    def write_table(self, filename: str, orientation: str = "cg", **kwargs) -> None:
+        r"""
         Write the expression matrix to a plain-text file.
         Note that ``obs`` (cell) meta table, ``var`` (gene) meta table and data
         in the ``uns`` slot are discarded, only the expression matrix is written
@@ -1210,14 +1333,14 @@ class ExprDataSet(object):
 
         Parameters
         ----------
-        filename : str
+        filename
             Name of the file to be written.
-        orientation : {"cg", "gc"}
-            Specifies whether to write in :math:`obs \\times var` or
-            :math:`obs \\times var` orientation.
-        **kwargs
+        orientation
+            Specifies whether to write in :math:`obs \times var` or
+            :math:`obs \times var` orientation, should be among {"cg", "gc"}.
+        kwargs
             Additional keyword arguments will be passed to
-            ``pandas.DataFrame.to_csv``.
+            :meth:`pandas.DataFrame.to_csv`.
         """
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
@@ -1238,26 +1361,29 @@ class ExprDataSet(object):
         df.to_csv(filename, **kwargs)
 
     @classmethod
-    def read_table(cls, filename, orientation="cg", sparsify=False, **kwargs):
-        """
+    def read_table(
+            cls, filename: str, orientation: str = "cg",
+            sparsify: bool = False, **kwargs
+    ) -> "ExprDataSet":
+        r"""
         Read expression matrix from a plain-text file
 
         Parameters
         ----------
-        filename : str
+        filename
             Name of the file to read from.
-        orientation : {"cg", "gc"}
+        orientation
             Specifies whether matrix in the file is in
-            :math:`cell \\times gene` or :math:`gene \\times cell` orientation.
-        sparsify : bool
+            :math:`cell \times gene` or :math:`gene \times cell` orientation.
+        sparsify
             Whether to convert the expression matrix into sparse format.
-        **kwargs
-            Additional keyword arguments will be passed to ``pandas.read_csv``.
+        kwargs
+            Additional keyword arguments will be passed to :func:`pandas.read_csv`.
 
         Returns
         -------
-        loaded_dataset : ExprDataSet
-            An ExprDataSet object loaded from the file.
+        loaded_dataset
+            An :class:`ExprDataSet` object loaded from the file.
         """
         df = pd.read_csv(filename, **kwargs)
         if orientation == "gc":
@@ -1274,6 +1400,10 @@ def read_clean(data):
     assert isinstance(data, np.ndarray)
     if data.dtype.type is np.bytes_:
         data = utils.decode(data)
+        mask = data == config._NAN_REPLACEMENT
+        if np.any(mask):
+            data = data.astype(object)
+            data[mask] = np.nan
     if data.size == 1:
         data = data.flat[0]
     return data
@@ -1282,6 +1412,8 @@ def read_clean(data):
 def write_clean(data):
     if not isinstance(data, np.ndarray):
         data = np.array(data)
+    if data.dtype.type is np.object_:
+        data[utils.isnan(data)] = config._NAN_REPLACEMENT
     if data.dtype.type in (np.str_, np.object_):
         data = utils.encode(data)
     return data
@@ -1308,11 +1440,12 @@ def dict_to_group(d, group):
             try:
                 value = write_clean(d[key])
                 if value.size == 1:
-                    group.create_dataset(key, data=value)
+                    h5opts = config.H5_TRACK_OPTS
                 else:
-                    group.create_dataset(key, data=value, **config.H5OPTS)
-            except Exception:
-                message.warning("Slot %s failed to save!" % key)
+                    h5opts = {**config.H5_COMPRESS_OPTS, **config.H5_TRACK_OPTS}
+                group.create_dataset(key, data=value, **h5opts)
+            except Exception:  # pylint: disable=broad-except
+                utils.logger.warning("Slot %s failed to save!", key)
 
 
 def df_to_dict(df):
@@ -1352,6 +1485,7 @@ def write_hybrid_path(obj, hybrid_path):
         else:
             obj = write_clean(obj)
             if obj.size == 1:
-                f.create_dataset(h5_path, data=obj)
+                h5opts = config.H5_TRACK_OPTS
             else:
-                f.create_dataset(h5_path, data=obj, **config.H5OPTS)
+                h5opts = {**config.H5_COMPRESS_OPTS, **config.H5_TRACK_OPTS}
+            f.create_dataset(h5_path, data=obj, **h5opts)

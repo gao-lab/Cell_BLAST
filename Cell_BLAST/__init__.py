@@ -1,22 +1,22 @@
-"""
+r"""
 The Cell_BLAST package
 """
 
-from . import utils
-if not utils.in_ipynb():
+from .utils import in_ipynb
+
+if not in_ipynb():
     import matplotlib
     matplotlib.use("agg")
 
-from . import blast
-from . import data
-from . import directi
-from . import latent
-from . import metrics
-from . import prob
-from . import rmbatch
-from . import config
+from . import (blast, config, data, directi, latent, metrics, prob, rmbatch,
+               utils)
+
 
 name = "Cell_BLAST"
+
+__copyright__ = "2020, Gao Lab"
+
+__author__ = "Zhijie Cao"
 
 __all__ = [
     "blast",
@@ -30,4 +30,4 @@ __all__ = [
     "config"
 ]
 
-__version__ = "0.2.14"
+__version__ = "0.3.6"

@@ -6,11 +6,14 @@ nbconvert = \
 rule experiments:
     input:
         "multilevel_batch.html",
-        "posterior_visualization.html",
+        "posterior_visualization_baron.html",
+        "posterior_visualization_adam.html",
+        "posterior_visualization_guo.html",
         "n_posterior_sample.html",
         "n_models.html",
         "distance_comparison.html",
-        "query_bias.html"
+        "query_bias.html",
+        "gene_grad_gsea.html"
     output:
         ".experiments_timestamp"
     threads: 1
@@ -32,11 +35,11 @@ rule multilevel_batch:
 
 rule posterior_visualization:
     input:
-        "posterior_visualization.ipynb"
+        "posterior_visualization_{dataset}.ipynb"
     output:
-        "posterior_visualization.html"
+        "posterior_visualization_{dataset}.html"
     log:
-        "posterior_visualization.log"
+        "posterior_visualization_{dataset}.log"
     threads: 4
     resources:
         gpu=1
@@ -89,6 +92,19 @@ rule query_bias:
         "query_bias.html"
     log:
         "query_bias.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule gene_grad_gsea:
+    input:
+        "gene_grad_gsea.ipynb"
+    output:
+        "gene_grad_gsea.html"
+    log:
+        "gene_grad_gsea.log"
     threads: 4
     resources:
         gpu=1

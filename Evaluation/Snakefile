@@ -2,6 +2,10 @@ subworkflow dimension_reduction:
     snakefile:
         "dimension_reduction.smk"
 
+subworkflow feature_selection:
+    snakefile:
+        "feature_selection.smk"
+
 subworkflow hyperparameter:
     snakefile:
         "hyperparameters.smk"
@@ -21,6 +25,7 @@ subworkflow time:
 rule evaluation:
     input:
         dimension_reduction("../Results/.dimension_reduction_timestamp"),
+        feature_selection("../Results/.feature_selection_timestamp"),
         hyperparameter("../Results/.hyperparameters_timestamp"),
         batch_removal("../Results/.batch_removal_timestamp"),
         query("../Results/.query_timestamp"),

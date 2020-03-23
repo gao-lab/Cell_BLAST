@@ -90,3 +90,4 @@ Cao_2019,Mus musculus,Atlas,9.5-13.5days,sci-RNA-seq3,1920648,The single-cell tr
 Green,Mus musculus,Testis,Adult,Drop-seq,34632,A Comprehensive Roadmap of Murine Spermatogenesis Defined by Single-Cell RNA-Seq,30146481,TRUE,,collect_green.R
 Ariss,Drosophila melanogaster,Eye disc,Third instar larva stage,Drop-seq,11269,Single cell RNA-sequencing identifies a metabolic aspect of apoptosis in Rbf mutant,30479347,TRUE,wt,collect_ariss.R
 Wagner,Danio rerio,Atlas,Embryo,inDrop,36728,Single-cell mapping of gene expression landscapes and lineage in the zebrafish embryo,29700229,TRUE,,collect_wagner.R
+Hochane,Homo sapiens,Kidney,9-18 week fetal,10x,14606,Single-cell transcriptomics reveals gene expression dynamics of human fetal kidney development.,30789893,TRUE,,colllect_hochane.R

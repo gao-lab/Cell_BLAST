@@ -48,43 +48,6 @@ rotate.df <- function(x, angle) {
 }
 
 
-rotated.fit <- function(
-    formula, data, weights, method = lm,
-    angle = 0, n = 1000, ...
-) {
-    # check args
-    x.name <- all.vars(formula[[3]])
-    y.name <- all.vars(formula[[2]])
-    stopifnot(length(x.name) == 1, length(y.name) == 1)
-    data <- data[, c(x.name, y.name)]
-
-    # rotate
-    data.rot <- rotate.df(data, angle)
-
-    # fit
-    if (missing(weights)) {
-        fitted.curve <- method(formula, data.rot, ...)
-    } else {
-        print(weights)
-        fitted.curve <- method(formula, data.rot, weights, ...)
-    }
-
-    # predict
-    pred.rot <- data.frame(x = seq(
-        from = min(data.rot[, x.name]),
-        to = max(data.rot[, x.name]),
-        length.out = n
-    ))
-
-    colnames(pred.rot) <- x.name
-    pred.rot[, y.name] <- predict(fitted.curve, pred.rot)
-    pred.rot <- pred.rot[order(pred.rot[, x.name]), ]
-
-    # rotate back
-    rotate.df(pred.rot, -angle)
-}
-
-
 rotated.spline <- function(
     data, angle, n = 1000, ...
 ) {  # Assuming first column as x and second column as y
@@ -101,4 +64,47 @@ rotated.spline <- function(
     colnames(pred.rot) <- colnames(data)
     pred.rot <- as.data.frame(pred.rot)
     rotate.df(pred.rot, -angle)
+}
+
+
+roc.smooth <- function(
+    data, n = 1000, k = 5, L = 1.05, angle = - pi / 4, plot = FALSE, ...
+) {
+    sigmoid <- function (x) L * exp(k * x) / (exp(k * x) + 1)
+    logit <- function (x) log((x / L) / (1 - x / L)) / k
+
+    # Transform
+    logit.data <- data.frame(x = logit(data[, 1]), y = logit(data[, 2]))
+    logit.data[logit.data > 1] <- 1
+    logit.data[logit.data < -1] <- -1
+    # logit.data <- logit.data[apply(logit.data, 1, function(x) all(is.finite(x))), ]
+    rot.logit.data <- rotate.df(logit.data, angle)
+
+    # Fit
+    fit <- smooth.spline(x = rot.logit.data$x, y = rot.logit.data$y, ...)
+    x <- seq(min(rot.logit.data$x), max(rot.logit.data$x), length.out = n)
+    y <- predict(fit, x)$y
+
+    # require(mgcv)
+    # fit <- gam(y ~ s(x, k = 10), data = rot.logit.data)
+    # x <- seq(min(rot.logit.data$x), max(rot.logit.data$x), length.out = n)
+    # y <- predict(fit, newdata = data.frame(x = x))
+
+    rot.logit.pred <- data.frame(x = x, y = y)
+
+    # Plot
+    if (plot) {
+        gp <- ggplot(data = NULL, mapping = aes(x = x, y = y)) +
+            geom_point(data = rot.logit.data) +
+            geom_line(data = rot.logit.pred, color = "grey", alpha = 0.5, size = 3)
+        tmp <- basename(tempfile(fileext = ".pdf"))
+        print(sprintf("Creating a temporary plot: %s", tmp))
+        ggsave(tmp, gp)
+    }
+
+    # Inverse-transform
+    logit.pred <- rotate.df(rot.logit.pred, -angle)
+    pred <- data.frame(x = sigmoid(logit.pred$x), y = sigmoid(logit.pred$y))
+    colnames(pred) <- colnames(data)
+    pred
 }

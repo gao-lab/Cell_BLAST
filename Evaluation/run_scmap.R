@@ -183,17 +183,19 @@ scmapCell_results <- scmapCell(
 )
 scmap_cell_ms_per_cell <- NULL
 scmapCell_clusters <- list()
-for (threshold in args$threshold)
+for (threshold in args$threshold) {
     scmapCell_clusters[[as.character(threshold)]] <- scmapCell2Cluster(
         scmapCell_results = scmapCell_results,
         cluster_list = lapply(
             ref_sces, function(sce) as.character(colData(sce)[["cell_type1"]])
         ), threshold = as.numeric(threshold)
     )
-    if (is.null(scmap_cell_ms_per_cell))
+    if (is.null(scmap_cell_ms_per_cell)) {
         scmap_cell_ms_per_cell <- 1000 * as.numeric(difftime(
             Sys.time(), start_time, units = "secs"
         )) / ncol(query_sce)
+    }
+}
 print(sprintf("Time: %f ms/cell", scmap_cell_ms_per_cell))
 
 

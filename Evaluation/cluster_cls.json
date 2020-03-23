@@ -18,6 +18,18 @@
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
     },
 
+    "dimension_reduction_tsne": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
+    },
+
+    "dimension_reduction_umap": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
+    },
+
     "dimension_reduction_zifa": {
         "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
         "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
@@ -96,13 +108,25 @@
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.h{wildcards.hidden_layer}.d{wildcards.depth}.c{wildcards.cluster}.l{wildcards.lambda_prior}.p{wildcards.prob_module}.{wildcards.seed}.err"
     },
 
+    "batch_removal_combat": {
+        "jobname": "{rule}.{wildcards.dataset}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.err"
+    },
+
+    "batch_removal_combat_followup_pca": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
+    },
+
     "batch_removal_mnn": {
         "jobname": "{rule}.{wildcards.dataset}",
         "output": "../Results/.slurm/{rule}.{wildcards.dataset}.out",
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.err"
     },
 
-    "batch_removal_mnn_pca": {
+    "batch_removal_mnn_followup_pca": {
         "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
         "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
@@ -120,7 +144,7 @@
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
     },
 
-    "batch_removal_cca_anchor_pca": {
+    "batch_removal_cca_anchor_followup_pca": {
         "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
         "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
         "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
@@ -133,6 +157,12 @@
         "partition": "gpu_4l",
         "qos": "gaogg4c",
         "gres": "--gres=gpu:1"
+    },
+
+    "batch_removal_cb_reconstruction": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.rmbatch}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.rmbatch}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.rmbatch}.{wildcards.seed}.err"
     },
 
     "batch_removal_scvi": {

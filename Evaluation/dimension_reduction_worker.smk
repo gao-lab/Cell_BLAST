@@ -13,6 +13,36 @@ rule dimension_reduction_pca:
         "-l -d {wildcards.dimensionality} -m irlba -s {wildcards.seed} "
         "--clean {config[label]} > {log} 2>&1 || touch {params.blacklist}"
 
+rule dimension_reduction_tsne:
+    input:
+        lambda wildcards: f"../Results/PCA/{wildcards.dataset}/dim_{config['tSNE']['pca']}/seed_{wildcards.seed}/result.h5"
+    output:
+        "../Results/tSNE/{dataset}/dim_{dimensionality}/seed_{seed}/result.h5"
+    log:
+        "../Results/tSNE/{dataset}/dim_{dimensionality}/seed_{seed}/log.txt"
+    params:
+        blacklist="../Results/tSNE/{dataset}/dim_{dimensionality}/seed_{seed}/.blacklist"
+    threads: 4
+    shell:
+        "timeout {config[timeout]} Rscript run_tSNE.R -i {input}//latent -o {output} "
+        "-d {wildcards.dimensionality} -j {threads} -s {wildcards.seed} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
+rule dimension_reduction_umap:
+    input:
+        lambda wildcards: f"../Results/PCA/{wildcards.dataset}/dim_{config['UMAP']['pca']}/seed_{wildcards.seed}/result.h5"
+    output:
+        "../Results/UMAP/{dataset}/dim_{dimensionality}/seed_{seed}/result.h5"
+    log:
+        "../Results/UMAP/{dataset}/dim_{dimensionality}/seed_{seed}/log.txt"
+    params:
+        blacklist="../Results/UMAP/{dataset}/dim_{dimensionality}/seed_{seed}/.blacklist"
+    threads: 4
+    shell:
+        "timeout {config[timeout]} python -u run_UMAP.py -i {input}//latent -o {output} "
+        "-d {wildcards.dimensionality} -s {wildcards.seed} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
 rule dimension_reduction_zifa:
     input:
         "../Datasets/data/{dataset}/data.h5"

@@ -65,7 +65,7 @@ class TestDenseExprDataSet(unittest.TestCase):
             [0, 0, 5]
         ])
         self.var = pd.DataFrame({"column": [1, 2, 3]}, index=["a", "b", "c"])
-        self.obs = pd.DataFrame({"column": [1, 2, 3]}, index=["d", "e", "f"])
+        self.obs = pd.DataFrame({"column": [1, 1, 1]}, index=["d", "e", "f"])
         self.uns = {"item": np.array(["a", "c"]), "blah": np.array(["blah"])}
         self.ds = cb.data.ExprDataSet(
             exprs=self.exprs, obs=self.obs, var=self.var, uns=self.uns)
@@ -131,23 +131,26 @@ class TestDenseExprDataSet(unittest.TestCase):
             cb.utils.densify(ds.exprs) != exprs_norm
         ).sum() == 0)
 
+    def test_select_genes(self):  # Smoke test
+        self.ds.find_variable_genes(num_bin=2, grouping="column")
+
     def test_slicing(self):
         exprs_ok = np.array([
             [2, 0, 0],
             [0, 0, 5]
         ])
         var_ok = pd.DataFrame({"column": [1, np.nan, 3]}, index=["a", "g", "c"])
-        obs_ok = pd.DataFrame({"column": [1, 3]}, index=["d", "f"])
+        obs_ok = pd.DataFrame({"column": [1, 1]}, index=["d", "f"])
         ds_ok = cb.data.ExprDataSet(
             exprs=exprs_ok, obs=obs_ok, var=var_ok, uns=self.ds.uns)
-        self._compare_datasets(self.ds[["d", "f"], ["a", "g", "c"], 0], ds_ok)
+        self._compare_datasets(self.ds[["d", "f"], ["a", "g", "c"]], ds_ok)
 
         exprs_ok = np.array([
             [2, 0],
             [0, 5]
         ])
         var_ok = pd.DataFrame({"column": [1, 3]}, index=["a", "c"])
-        obs_ok = pd.DataFrame({"column": [1, 3]}, index=["d", "f"])
+        obs_ok = pd.DataFrame({"column": [1, 1]}, index=["d", "f"])
         ds_ok = cb.data.ExprDataSet(
             exprs=exprs_ok, obs=obs_ok, var=var_ok, uns=self.ds.uns)
         self._compare_datasets(self.ds[:, :][[0, 2], [0, 2]], ds_ok)
@@ -173,7 +176,7 @@ class TestDenseExprDataSet(unittest.TestCase):
     def test_merge_datasets(self):
         merged_ds = cb.data.ExprDataSet.merge_datasets(collections.OrderedDict(
             ds1=self.ds, ds2=self.ds.copy(deep=True)
-        ), meta_col="study", merge_uns_slots=["item"], verbose=0)
+        ), meta_col="study", merge_uns_slots=["item"])
         exprs_ok = cb.utils.densify(self.ds.exprs)
         exprs_ok = np.concatenate([exprs_ok, exprs_ok], axis=0)
         obs_ok = pd.DataFrame(collections.OrderedDict(
@@ -238,7 +241,7 @@ class TestSparseExprDataSet(TestDenseExprDataSet):
             [0, 0, 5]
         ]))
         self.var = pd.DataFrame({"column": [1, 2, 3]}, index=["a", "b", "c"])
-        self.obs = pd.DataFrame({"column": [1, 2, 3]}, index=["d", "e", "f"])
+        self.obs = pd.DataFrame({"column": [1, 1, 1]}, index=["d", "e", "f"])
         self.uns = {"item": np.array(["a", "c"])}
         self.ds = cb.data.ExprDataSet(
             exprs=self.exprs, obs=self.obs, var=self.var, uns=self.uns)

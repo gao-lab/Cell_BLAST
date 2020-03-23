@@ -32,7 +32,7 @@ def main():
         d = parse.parse(snakemake.params.pattern, item).named
         for threshold in df_selected.loc[[d["method"].replace("_", " ")], "threshold"]:
             tree[d["group"]][d["method"]][threshold].append(pd.read_excel(
-                item, sheet_name=str(threshold), index_col=0))
+                item, sheet_name=str(round(threshold, 12)), index_col=0))  # discard floating error
 
     output = pd.ExcelWriter(snakemake.output[0])
     for group in sorted(tree.keys()):

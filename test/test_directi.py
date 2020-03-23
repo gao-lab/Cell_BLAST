@@ -78,6 +78,10 @@ class DirectiTest(unittest.TestCase):
         model = cb.directi.DIRECTi.load("./test_directi")
         latent2 = model.inference(self.data)
         self.assertTrue(np.all(self.data.latent == latent2))
+        random_state = np.random.RandomState(0)
+        model.gene_grad(
+            self.data, random_state.randn(self.data.shape[0], 10)
+        )
 
     def test_semisupervised_catgau(self):
         _ = self.data.annotation_confidence(

@@ -1,56 +1,66 @@
-"""
+r"""
 Model initialization, training and saving/loading framework used by DIRECTi
 """
 
 
-from builtins import input
-import os
-import time
 import json
+import os
+import abc
+import time
 import traceback
+import typing
+import tempfile
+from builtins import input
 
 import numpy as np
 import tensorflow as tf
 
 from . import utils
-from . import message
 
 
 class Model(object):
-    """
+    r"""
     Abstract model class, providing a framework for model initialization,
     training, saving and loading.
     """
-    def __init__(self, random_seed=None, path=".", **kwargs):
-        if not os.path.exists(path):
-            os.makedirs(path)
-        self.path = path
+    def __init__(
+            self, random_seed: typing.Optional[int] = None,
+            path: typing.Optional[str] = None, **kwargs
+    ) -> None:
         self.random_state = np.random.RandomState(random_seed)
         self.graph = tf.Graph()
         self.vars_to_save = []
-        with self.graph.as_default():
+        with self.graph.as_default():  # pylint: disable=not-context-manager
             if random_seed is not None:
                 tf.set_random_seed(random_seed)
             self._init_graph(**kwargs)
             self._init_session()
+        if path is None:
+            self.path = tempfile.mkdtemp()
+        else:
+            os.makedirs(path, exist_ok=True)
+            self.path = path
+        utils.logger.info("Using model path: %s", self.path)
 
     @utils.with_self_graph
-    def compile(self, optimizer, lr, initialize_weights=True):
-        """
+    def compile(
+            self, optimizer: str, lr: float, initialize_weights: bool = True
+    ) -> "Model":
+        r"""
         Compile the model and get ready for fitting.
 
         Parameters
         ----------
-        optimizer : str
+        optimizer
             Name of the optimizer to use.
-        lr : float
+        lr
             Learning rate.
-        initialize_weights : bool
-            Whether to initialize model weights, by default True.
+        initialize_weights
+            Whether to initialize model weights.
 
         Returns
         -------
-        model : Cell_BLAST.model.Model
+        model
             A compiled model.
         """
         self._compile(optimizer, lr)
@@ -60,41 +70,47 @@ class Model(object):
         return self
 
     # Called with self.graph.as_default
-    def _init_session(self):
+    def _init_session(self) -> None:
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
+        config.gpu_options.allow_growth = True  # pylint: disable=no-member
         self.sess = tf.Session(config=config)
 
     # Called with self.graph.as_default
-    def _init_graph(self, **kwargs):
+    def _init_graph(self) -> None:
         with tf.variable_scope("epoch", reuse=tf.AUTO_REUSE):
             self.epoch = tf.get_variable(
                 "epoch", shape=(), dtype=tf.int32, trainable=False)
 
     # Called with self.graph.as_default
-    def _compile(self, optimizer, lr):  # pragma: no cover
-        raise NotImplementedError(
-            "Calling virtual `_compile` from `Model`!")
+    @abc.abstractmethod
+    def _compile(self, optimizer, lr) -> None:  # pragma: no cover
+        raise NotImplementedError
 
     # Called with self.graph.as_default
-    def _summarize(self):
+    def _summarize(self) -> None:
         self.summarizer = tf.summary.FileWriter(
             os.path.join(self.path, "summary"),
             graph=self.graph, flush_secs=10
         )
 
-    def close(self):
-        """
+    def close(self) -> None:
+        r"""
         Clean up and close the model.
         """
         self.sess.close()
         # tf.reset_default_graph()
 
     @utils.with_self_graph
-    def fit(self, data_dict, val_split=0.1, epoch=100,
-            patience=np.inf, tolerance=0.0, on_epoch_end=None,
-            progress_bar=True, **kwargs):
-        """
+    def fit(
+            self, data_dict: utils.DataDict,
+            val_split: float = 0.1, epoch: int = 100,
+            patience: int = np.inf, tolerance: float = 0.0,
+            on_epoch_end: typing.Optional[typing.List[typing.Callable[
+                ["Model", utils.DataDict, utils.DataDict, float], bool
+            ]]] = None,
+            progress_bar: bool = True, **kwargs
+    ) -> "Model":
+        r"""
         This function wraps an epoch-by-epoch update function into
         complete training process that supports data splitting, shuffling
         and early stop.
@@ -119,8 +135,7 @@ class Model(object):
         for epoch_idx in range(epoch):
             self.epoch_report = ""
             try:
-                self.epoch_report += "[%s epoch %d] " % (
-                    self.__class__.__name__, epoch_idx)
+                self.epoch_report += f"[{self.__class__.__name__} epoch {epoch_idx}] "
                 self.sess.run(self.epoch.assign(epoch_idx))
 
                 try:
@@ -133,8 +148,7 @@ class Model(object):
                         val_data_dict,
                         progress_bar=progress_bar, **kwargs
                     )
-                    self.epoch_report += "time elapsed=%.1fs" % (
-                        time.time() - t_start)
+                    self.epoch_report += f"time elapsed={time.time() - t_start:.1f}s"
                 except Exception:  # pragma: no cover
                     print("\n==== Oops! Model has crashed... ====\n")
                     traceback.print_exc()
@@ -195,38 +209,44 @@ class Model(object):
         return self
 
     # Called with self.graph.as_default
-    def _fit_epoch(self, data_dict, **kwargs):  # pragma: no cover
-        raise NotImplementedError(
-            "Calling virtual `_fit_epoch` from `Model`!")
+    @abc.abstractmethod
+    def _fit_epoch(
+            self, data_dict: utils.DataDict, **kwargs
+    ) -> None:  # pragma: no cover
+        raise NotImplementedError
 
     # Called with self.graph.as_default
-    def _val_epoch(self, data_dict, **kwargs):  # pragma: no cover
-        raise NotImplementedError(
-            "Calling virtual `_val_epoch` from `Model`!")
+    @abc.abstractmethod
+    def _val_epoch(
+            self, data_dict: utils.DataDict, **kwargs
+    ) -> float:  # pragma: no cover
+        raise NotImplementedError
 
-    def _get_config(self):
+    def _get_config(self) -> typing.Mapping:
         return {}
 
-    def _save_config(self, file):
+    def _save_config(self, file: str) -> None:
         with open(file, "w") as f:
             json.dump(self._get_config(), f, indent=4)
 
     @classmethod
-    def _load_config(cls, file, **kwargs):
+    def _load_config(cls, file: str, **kwargs) -> "Model":
         with open(file, "r") as f:
             config = json.load(f)
         return cls(path=os.path.dirname(file), **config, **kwargs)
 
     @utils.with_self_graph
-    def _save_weights(self, path):
+    def _save_weights(self, path: str) -> None:
         if self.vars_to_save:
             if not os.path.exists(path):
                 os.makedirs(path)
             tf.train.Saver(var_list=self.vars_to_save, max_to_keep=1).save(
-                self.sess, os.path.join(path, "save.ckpt"), write_meta_graph=False)
+                self.sess, os.path.join(path, "save.ckpt"),
+                write_meta_graph=False
+            )
 
     @utils.with_self_graph
-    def _load_weights(self, path, verbose=1):
+    def _load_weights(self, path: str) -> None:
         failed_vars = []
         for var_to_save in self.vars_to_save:
             try:
@@ -237,26 +257,26 @@ class Model(object):
                 )
             except Exception:
                 failed_vars.append(var_to_save)
-        if failed_vars and verbose:
-            message.warning("%d variables failed to load!" % len(failed_vars))
-            if verbose > 1:
-                print(failed_vars)
+        if failed_vars:
+            utils.logger.info("%d variables failed to load.", len(failed_vars))
+            utils.logger.debug(str(failed_vars))
 
-    def save(self, path=None, config="config.json", weights="weights"):
-        """
+    def save(
+            self, path: typing.Optional[str] = None,
+            config: str = "config.json", weights: str = "weights"
+    ) -> None:
+        r"""
         Save model configuration and weights.
 
         Parameters
         ----------
-        path : str
-            Path to save the model, by default None, in which case ``model.path``
+        path
+            Path to save the model. If not specified, :attr:`Model.path`
             will be used.
-        config : str
-            File to store model configuration (in json format, under ``path``),
-            by default "config.json".
-        weights : str
-            Directory to store model weights (under ``path``), by default
-            "weights".
+        config
+            File to store model configuration (in json format, under ``path``).
+        weights
+            Directory to store model weights (under ``path``).
         """
         if path is None:
             path = self.path
@@ -266,34 +286,29 @@ class Model(object):
         self._save_weights(os.path.join(path, weights))
 
     @classmethod
-    def load(cls, path, config="config.json", weights="weights",
-             verbose=1, **kwargs):
-        """
+    def load(
+            cls, path: str,
+            config: str = "config.json", weights: str = "weights", **kwargs
+    ) -> "Model":
+        r"""
         Load model configuration and weights.
 
         Parameters
         ----------
-        path : str
+        path
             Model path.
-        config : str
-            File that stores model configuration (in json format,
-            under ``path``), by default "config.json".
-        weights : str
-            Directory that stores model weights (under ``path``),
-            by default "weights".
-        verbose : int
-            Verbose level, by default 1.
-            If verbose = 0, no information will be printed.
-            If verbose = 1, print the number of variables that failed to load.
-            If verbose = 2, additionally print a variable list that failed to load.
-        **kwargs
-            Additional keyword arguments to be passed to the class constructor
+        config
+            File that stores model configuration (in json format, under ``path``).
+        weights
+            Directory that stores model weights (under ``path``).
+        kwargs
+            Additional keyword arguments to be passed to the class constructor.
 
         Returns
         -------
-        loaded_model : Cell_BLAST.model.Model
+        loaded_model
             Loaded model.
         """
         model = cls._load_config(os.path.join(path, config), **kwargs)
-        model._load_weights(os.path.join(path, weights), verbose)
+        model._load_weights(os.path.join(path, weights))
         return model

@@ -1,0 +1,54 @@
+{
+    "dataset": ["Muraro", "Adam", "Guo", "Plasschaert", "Baron_human", "Bach", "Macosko"],
+    "genes": {
+        "gene_set_1": {
+            "x_low": 1.0,
+            "x_high": 8.0,
+            "y_low": 2.0,
+            "y_high": 999999.0
+        },
+        "gene_set_2": {
+            "x_low": 0.5,
+            "x_high": 8.0,
+            "y_low": 1.5,
+            "y_high": 999999.0
+        },
+        "gene_set_3": {
+            "x_low": 0.2,
+            "x_high": 8.0,
+            "y_low": 1.2,
+            "y_high": 999999.0
+        },
+        "gene_set_4": {
+            "x_low": 0.1,
+            "x_high": 8.0,
+            "y_low": 1.0,
+            "y_high": 999999.0
+        },
+        "gene_set_5": {
+            "x_low": 0.05,
+            "x_high": 8.0,
+            "y_low": 0.5,
+            "y_high": 999999.0
+        },
+        "gene_set_6": {
+            "x_low": 0.02,
+            "x_high": 8.0,
+            "y_low": 0.2,
+            "y_high": 999999.0
+        },
+        "gene_set_7": {
+            "x_low": 0.0,
+            "x_high": 8.0,
+            "y_low": 0.0,
+            "y_high": 999999.0
+        }
+    },
+    "timeout": "12h",
+    "dimensionality": 10,
+    "seed": 16,
+    "n_cluster": 20,
+    "label": "cell_ontology_class",
+    "nn": 0.01,
+    "plot_ext": "pdf"
+}
