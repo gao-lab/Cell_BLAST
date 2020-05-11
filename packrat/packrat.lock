@@ -78,6 +78,11 @@ Hash: 59282f85aab88043ee684b04d85d7b6f
 Requires: BiocGenerics, BiocParallel, DelayedArray, Matrix, Rcpp,
     S4Vectors, beachmat, irlba, rsvd
 
+Package: BiocVersion
+Source: Bioconductor
+Version: 3.10.1
+Hash: d1adfc2453d037b58c692ffd3806bcf6
+
 Package: Biostrings
 Source: Bioconductor
 Version: 2.52.0
@@ -875,6 +880,12 @@ Version: 3.26.4
 Hash: 0253c92c97c838d06ea652ad5a71df99
 Requires: Rcpp, limma, locfit
 
+Package: ellipsis
+Source: CRAN
+Version: 0.3.0
+Hash: 30b58109e4d7c6184a9c2e32f9ae38c6
+Requires: rlang
+
 Package: evaluate
 Source: CRAN
 Version: 0.14
@@ -900,6 +911,11 @@ Package: fansi
 Source: CRAN
 Version: 0.4.0
 Hash: f147621f72b561485bfffcae78c4f5d5
+
+Package: farver
+Source: CRAN
+Version: 2.0.3
+Hash: 29a358c21cb8de2e424cbec6b6be6553
 
 Package: fastICA
 Source: CRAN
@@ -1163,6 +1179,23 @@ Source: CRAN
 Version: 3.8.1
 Hash: 6cb09dd6faf3aeac5c5acae55bfa6495
 
+Package: harmony
+Source: github
+Version: 1.0
+Hash: 9c901d74ef02005a1c1f596b24a19cbe
+Requires: Matrix, Rcpp, RcppArmadillo, RcppProgress,
+    SingleCellExperiment, cowplot, dplyr, ggplot2, irlba, rlang,
+    tibble, tidyr
+GithubRepo: harmony
+GithubUsername: immunogenomics
+GithubRef: master
+GithubSha1: 88b1e2a1e95306cd4531eaf89ad98712af05ca99
+RemoteHost: api.github.com
+RemoteRepo: harmony
+RemoteUsername: immunogenomics
+RemoteRef: master
+RemoteSha: 88b1e2a1e95306cd4531eaf89ad98712af05ca99
+
 Package: hdf5r
 Source: CRAN
 Version: 1.2.0
@@ -1250,6 +1283,12 @@ Version: 2.3.3
 Hash: b54c77f8a47a3d33dd738d5ae9d491bf
 Requires: Matrix
 
+Package: isoband
+Source: CRAN
+Version: 0.2.1
+Hash: 992f07fc3dc52bb6ccbb593b14f74762
+Requires: Rcpp, testthat
+
 Package: iterators
 Source: CRAN
 Version: 1.0.10
@@ -1332,6 +1371,12 @@ Package: lazyeval
 Source: CRAN
 Version: 0.2.2
 Hash: 563563691bea3cde6945a98996d7c166
+
+Package: lifecycle
+Source: CRAN
+Version: 0.2.0
+Hash: df8649860c43571aab68cc73a2a02807
+Requires: glue, rlang
 
 Package: limSolve
 Source: CRAN

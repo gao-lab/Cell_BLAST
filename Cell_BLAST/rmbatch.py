@@ -112,13 +112,13 @@ class Adversarial(RMBatch):
                 input_tensor, [self.h_dim] * self.depth,
                 dropout=dropout.tolist(), training_flag=training_flag
             ), self.batch_dim), "batch_logit")
-            self.batch_d_loss = tf.cast(
+            self.batch_d_loss = tf.multiply(tf.cast(
                 epoch >= self.delay, tf.float32
-            ) * tf.reduce_mean(
+            ), tf.reduce_mean(
                 tf.nn.softmax_cross_entropy_with_logits_v2(
                     labels=batch, logits=batch_pred
-                ), name="d_loss"
-            )
+                ), name="raw_d_loss"
+            ), name="d_loss")
             self.batch_g_loss = tf.negative(self.batch_d_loss, name="g_loss")
 
         self.vars_to_save += tf.get_collection(

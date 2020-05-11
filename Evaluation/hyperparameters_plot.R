@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
     library(reshape2)
     library(dplyr)
     library(ggsci)
+    library(ggpubr)
     library(extrafont)
 })
 source("../Utilities/utils.R")
@@ -63,3 +64,35 @@ gp <- ggplot(data = df %>% group_by(dataset, variable, value) %>% summarise(
     name = "Dataset", values = color_mapping
 )
 ggsave(snakemake@output[["map"]], mod_style(gp), width = 7.5, height = 5)
+
+df$dataset <- factor(df$dataset, levels = snakemake@config[["dataset"]])
+dataset_meta <- rbind(
+    read.csv(
+        "../Datasets/ACA_datasets.csv", row.names = 1, comment = "#",
+        check.names = FALSE, stringsAsFactors = FALSE
+    )[, "platform", drop = FALSE],
+    read.csv(
+        "../Datasets/additional_datasets.csv", row.names = 1, comment = "#",
+        check.names = FALSE, stringsAsFactors = FALSE
+    )[, "platform", drop = FALSE]
+)
+levels(df$dataset) <- sapply(levels(df$dataset), function(x) {
+    sprintf("%s\n(%s)", x, dataset_meta[x, "platform"])
+})
+prob_df <- df %>% filter(variable == "prob_module")
+prob_df_blank <- prob_df %>% mutate(
+    mean_average_precision = mean_average_precision + 0.0002
+)  # Slighly increase the gap between significance labels and boxes
+gp <- ggplot(data = prob_df, mapping = aes(
+    x = value, y = mean_average_precision,
+    col = value, fill = value
+)) + geom_boxplot(alpha = 0.5, width = 0.5) + facet_wrap(
+    ~dataset, scales = "free_y", ncol = 3
+) + stat_compare_means(
+    method = "wilcox.test", label = "p.signif", label.x.npc = "center", size = 3.5
+) + geom_blank(data = prob_df_blank) + scale_x_discrete(
+    name = "Generative distribution"
+) + scale_y_continuous(
+    name = "Mean average precision"
+) + scale_fill_d3() + scale_color_d3() + guides(fill = FALSE, color = FALSE)
+ggsave(snakemake@output[["probmap"]], mod_style(gp), width = 7, height = 8)

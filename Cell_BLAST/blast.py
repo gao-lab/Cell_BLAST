@@ -1292,9 +1292,6 @@ class Hits(object):
         if normalize_deviation:
             deviation /= np.linalg.norm(deviation, axis=2, keepdims=True)
 
-        # TODO: We can do some sort of interpolation here to further improve
-        # reliability of the results?
-
         if eval_point in ("ref", "both"):
             gene_dev_ref = joblib.Parallel(
                 n_jobs=n_jobs, backend="threading"

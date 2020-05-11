@@ -52,6 +52,7 @@ optdims <- as.data.frame(df %>% group_by(method, dimensionality, dataset) %>% su
     dimensionality = dimensionality[which.max(mean_average_precision)]
 ))
 optdims[optdims$method == "Cell BLAST", "dimensionality"] <- 10
+# optdims[!(optdims$method %in% c("tSNE", "UMAP", "SAUCIE")), "dimensionality"] <- 10  # For addressing reviewer question
 method_dim <- sprintf("%s (%d)", optdims$method, optdims$dimensionality)
 names(method_dim) <- optdims$method
 optdf <- merge(optdims, df)
@@ -76,8 +77,8 @@ gp <- ggplot(data = optdf %>% group_by(dataset, method) %>% summarise(
     name = "Mean average precision"
 ) + scale_fill_manual(
     name = "Method", values = color_mapping
-) + coord_cartesian(ylim = c(0.85, 1.0))
-ggsave(snakemake@output[["optmap"]], mod_style(gp), width = 10, height = 4.5)
+) + coord_cartesian(ylim = c(0.5, 1.0))
+ggsave(snakemake@output[["optmap"]], mod_style(gp), width = 11, height = 4.5)
 
 # Integrative
 optdf_summarize_seed <- optdf %>% group_by(method, dataset) %>% summarise(
@@ -103,5 +104,5 @@ gp <- ggplot(data = optdf_summarize_dataset, mapping = aes(
     name = "Mean average precision"
 ) + scale_fill_manual(
     values = color_mapping, name = "Method"
-) + coord_cartesian(ylim = c(0.85, 1.0)) + guides(fill = FALSE)
-ggsave(snakemake@output[["integrative"]], mod_style(gp, rotate.x = TRUE), width = 5, height = 4)
+) + coord_cartesian(ylim = c(0.68, 1.0)) + guides(fill = FALSE)
+ggsave(snakemake@output[["integrative"]], mod_style(gp, rotate.x = TRUE), width = 7, height = 4)

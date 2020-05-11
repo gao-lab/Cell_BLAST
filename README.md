@@ -87,13 +87,26 @@ All dependencies have already been installed via `env.yml`,
 so `--no-deps` is added to prevent overwriting conda installed packages:
 
 ```bash
-pip install Cell-BLAST==0.2.14 --no-deps
+pip install Cell-BLAST==0.3.7 --no-deps
 pip install local/scScope-0.1.5.tar.gz --no-deps  # Add random seed setting
 pip install local/DCA-0.2.2.tar.gz --no-deps  # Allow GPU memory growth, suppress integer warning
 pip install local/DCA_modpp-0.2.2.tar.gz --no-deps  # Modify preprocessing
 pip install local/ZIFA-0.1.tar.gz --no-deps  # Remove fixed random seeds
 pip install local/Dhaka-0.1.tar.gz --no-deps
 pip install local/scvi-0.2.3.tar.gz --no-deps  # Fix torch bugs
+tar xf local/SAUCIE.tar.gz -C ${CONDA_PREFIX}/lib/python3.6/site-packages/  # Add random seed setting
+pip install fcswrite  # Dependency of SAUCIE not available in conda
+```
+
+For scPhere, we use a separate environment because of conflicting dependencies
+(the environment should be named "scphere" for it to be found in the benchmarking pipeline):
+
+```bash
+conda create -n scphere 'python>=3.6' 'numpy>=1.16.4' 'scipy>=1.3.0' \
+   'pandas>=0.21.0' 'matplotlib>=3.1.0' 'tensorflow=1.14.0' \
+   'tensorflow-probability=0.7.0' 'ipykernel' && conda activate scphere
+pip install local/scPhere-0.1.0.tar.gz --no-deps
+pip install Cell-BLAST==0.3.7  # Still need cb.data to read data (tf dependent functions may not work properly)
 ```
 
 #### R
@@ -110,7 +123,7 @@ Then install the customized version of Seurat by:
 install.packages("local/seurat-2.3.3.tar.gz", repos=NULL, type="source")  # Remove fixed random seeds
 ```
 
-For CCA anchor (Seurat v3), we used a separate packrat environment.
+For CCA anchor (Seurat v3) and Harmony, we used a separate packrat environment.
 
 To build this dedicated environment, start R at directory "packrat/envs/seurat_v3" and run:
 

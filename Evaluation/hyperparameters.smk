@@ -12,7 +12,8 @@ log_pattern = result_pattern_prefix + "log.txt"
 
 rule hyperparameters:
     input:
-        "../Results/hyperparameters_map.{ext}".format(ext=config["plot_ext"])
+        "../Results/hyperparameters_map.{ext}".format(ext=config["plot_ext"]),
+        "../Results/hyperparameters_probmap.{ext}".format(ext=config["plot_ext"])
     output:
         "../Results/.hyperparameters_timestamp"
     threads: 1
@@ -24,7 +25,8 @@ rule hyperparameters_plot:
         data="../Results/hyperparameters.csv",
         script="hyperparameters_plot.R"
     output:
-        map="../Results/hyperparameters_map.{ext}".format(ext=config["plot_ext"])
+        map="../Results/hyperparameters_map.{ext}".format(ext=config["plot_ext"]),
+        probmap="../Results/hyperparameters_probmap.{ext}".format(ext=config["plot_ext"])
     threads: 1
     script:
         "hyperparameters_plot.R"

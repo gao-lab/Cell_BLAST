@@ -2,7 +2,7 @@
     "gene_space_method": [],
     "latent_space_method": [
         "PCA", "ComBat+PCA", "MNN+PCA", "CCA_anchor+PCA",
-        "CCA", "scVI", "Cell_BLAST"
+        "CCA", "Harmony", "SAUCIE", "scPhere", "scVI", "Cell_BLAST"
     ],
     "Null": {
         "dimensionality": ["NA"],
@@ -45,6 +45,21 @@
         "seed": 16
     },
     "CCA": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "Harmony": {
+        "dimensionality": [2, 5, 10, 20, 50],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "SAUCIE": {
+        "dimensionality": [2],
+        "lambda_rmbatch_reg": ["NA"],
+        "seed": 16
+    },
+    "scPhere": {
         "dimensionality": [2, 5, 10, 20, 50],
         "lambda_rmbatch_reg": ["NA"],
         "seed": 16

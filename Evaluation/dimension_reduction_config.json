@@ -1,5 +1,5 @@
 {
-    "method": ["PCA", "tSNE", "UMAP", "ZIFA", "ZINB_WaVE", "Dhaka", "DCA", "scVI", "scScope", "Cell_BLAST"],
+    "method": ["PCA", "tSNE", "UMAP", "ZIFA", "ZINB_WaVE", "Dhaka", "DCA", "scVI", "scScope", "SAUCIE", "scPhere", "Cell_BLAST"],
     "Cell_BLAST": {
         "n_cluster": 20
     },
@@ -9,6 +9,9 @@
     },
     "UMAP": {
         "pca": 50,
+        "dimensionality": [2]
+    },
+    "SAUCIE": {
         "dimensionality": [2]
     },
     "dimensionality": [2, 5, 10, 20, 50],

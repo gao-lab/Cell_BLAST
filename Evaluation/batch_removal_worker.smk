@@ -193,3 +193,53 @@ rule batch_removal_scvi:
         "-i {input} -o {output} -g {config[genes]} -b {config[batch]} "
         "--n-latent {wildcards.dimensionality} -s {wildcards.seed} --clean {config[label]} "
         "> {log} 2>&1 || touch {params.blacklist}"
+
+rule batch_removal_harmony:
+    input:
+        "../Datasets/data/{dataset}/data.h5"
+    output:
+        "../Results/Harmony/{dataset,.+\+.+}/dim_{dimensionality}_rmbatchNA/seed_{seed}/result.h5"
+    log:
+        "../Results/Harmony/{dataset}/dim_{dimensionality}_rmbatchNA/seed_{seed}/log.txt"
+    params:
+        blacklist = "../Results/Harmony/{dataset}/dim_{dimensionality}_rmbatchNA/seed_{seed}/.blacklist"
+    threads: 1
+    shell:
+        "timeout {config[timeout]} Rscript run_Harmony.R "
+        "-i {input} -o {output} -g {config[genes]} -b {config[batch]} "
+        "-d {wildcards.dimensionality} -s {wildcards.seed} --clean {config[label]} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
+rule batch_removal_saucie:
+    input:
+        "../Datasets/data/{dataset}/data.h5"
+    output:
+        "../Results/SAUCIE/{dataset,.+\+.+}/dim_2_rmbatchNA/seed_{seed}/result.h5"
+    log:
+        "../Results/SAUCIE/{dataset}/dim_2_rmbatchNA/seed_{seed}/log.txt"
+    params:
+        blacklist = "../Results/SAUCIE/{dataset}/dim_2_rmbatchNA/seed_{seed}/.blacklist"
+    threads: 4
+    resources:
+        gpu = 1
+    shell:
+        "timeout {config[timeout]} python -u run_SAUCIE.py "
+        "-i {input} -o {output} -g {config[genes]} -b {config[batch]} "
+        "-s {wildcards.seed} --clean {config[label]} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
+rule batch_removal_scphere:
+    input:
+        "../Datasets/data/{dataset}/data.h5"
+    output:
+        "../Results/scPhere/{dataset,.+\+.+}/dim_{dimensionality}_rmbatchNA/seed_{seed}/result.h5"
+    log:
+        "../Results/scPhere/{dataset}/dim_{dimensionality}_rmbatchNA/seed_{seed}/log.txt"
+    params:
+        blacklist = "../Results/scPhere/{dataset}/dim_{dimensionality}_rmbatchNA/seed_{seed}/.blacklist"
+    threads: 4
+    shell:
+        "timeout {config[timeout]} python -u run_scPhere.py "
+        "-i {input} -o {output} -g {config[genes]} -b {config[batch]} "
+        "-d {wildcards.dimensionality} -s {wildcards.seed} --clean {config[label]} "
+        "> {log} 2>&1 || touch {params.blacklist}"

@@ -158,6 +158,40 @@ rule dimension_reduction_scscope:
         "--n-latent {wildcards.dimensionality} -s {wildcards.seed} "
         "--clean {config[label]} > {log} 2>&1 || touch {params.blacklist}"
 
+rule dimension_reduction_saucie:
+    input:
+        "../Datasets/data/{dataset}/data.h5"
+    output:
+        "../Results/SAUCIE/{dataset}/dim_2/seed_{seed}/result.h5"
+    log:
+        "../Results/SAUCIE/{dataset}/dim_2/seed_{seed}/log.txt"
+    params:
+        blacklist="../Results/SAUCIE/{dataset}/dim_2/seed_{seed}/.blacklist"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        "timeout {config[timeout]} python -u run_SAUCIE.py "
+        "-i {input} -o {output} -g {config[genes]} "
+        "-s {wildcards.seed} --clean {config[label]} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
+rule dimension_reduction_scphere:
+    input:
+        "../Datasets/data/{dataset}/data.h5"
+    output:
+        "../Results/scPhere/{dataset}/dim_{dimensionality}/seed_{seed}/result.h5"
+    log:
+        "../Results/scPhere/{dataset}/dim_{dimensionality}/seed_{seed}/log.txt"
+    params:
+        blacklist="../Results/scPhere/{dataset}/dim_{dimensionality}/seed_{seed}/.blacklist"
+    threads: 4
+    shell:
+        "timeout {config[timeout]} python -u run_scPhere.py "
+        "-i {input} -o {output} -g {config[genes]} "
+        "-d {wildcards.dimensionality} -s {wildcards.seed} --clean {config[label]} "
+        "> {log} 2>&1 || touch {params.blacklist}"
+
 rule dimension_reduction_cb:
     input:
         "../Datasets/data/{dataset}/data.h5"

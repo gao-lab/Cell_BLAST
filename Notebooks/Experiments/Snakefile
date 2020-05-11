@@ -13,7 +13,8 @@ rule experiments:
         "n_models.html",
         "distance_comparison.html",
         "query_bias.html",
-        "gene_grad_gsea.html"
+        "gene_grad_gsea.html",
+        "training_dynamics.html"
     output:
         ".experiments_timestamp"
     threads: 1
@@ -105,6 +106,19 @@ rule gene_grad_gsea:
         "gene_grad_gsea.html"
     log:
         "gene_grad_gsea.log"
+    threads: 4
+    resources:
+        gpu=1
+    shell:
+        nbconvert
+
+rule training_dynamics:
+    input:
+        "training_dynamics.ipynb"
+    output:
+        "training_dynamics.html"
+    log:
+        "training_dynamics.log"
     threads: 4
     resources:
         gpu=1

@@ -78,6 +78,18 @@
         "gres": "--gres=gpu:1"
     },
 
+    "dimension_reduction_saucie": {
+        "jobname": "{rule}.{wildcards.dataset}.2.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.2.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.2.{wildcards.seed}.err"
+    },
+
+    "dimension_reduction_scphere": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
+    },
+
     "dimension_reduction_cb": {
         "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
         "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
@@ -172,6 +184,27 @@
         "partition": "gpu_4l",
         "qos": "gaogg4c",
         "gres": "--gres=gpu:1"
+    },
+
+    "batch_removal_harmony": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
+    },
+
+    "batch_removal_saucie": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err",
+        "partition": "gpu_4l",
+        "qos": "gaogg4c",
+        "gres": "--gres=gpu:1"
+    },
+
+    "batch_removal_scphere": {
+        "jobname": "{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}",
+        "output": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.out",
+        "error": "../Results/.slurm/{rule}.{wildcards.dataset}.{wildcards.dimensionality}.{wildcards.seed}.err"
     },
 
     "batch_removal_metrics": {

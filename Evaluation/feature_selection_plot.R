@@ -33,4 +33,4 @@ gp <- ggplot(data = df %>% group_by(dataset, genes, n_gene) %>% summarise(
 ) + scale_y_continuous(
     name = "Mean average precision"
 )
-ggsave(snakemake@output[["map"]], mod_style(gp), width = 6, height = 4.5)
+ggsave(snakemake@output[["map"]], mod_style(gp), width = 6, height = 3.5)
