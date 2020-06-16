@@ -9,7 +9,7 @@ cells based on cell-to-cell similarities. See our
 
 ![flowchart](docs/_static/flowchart.svg)
 
-## Installing the python package
+## Installing the Python package
 
 We only support installation via pip right now.
 
@@ -20,7 +20,7 @@ Installation within virtual environments are recommended, see
 For conda, here's a one-liner to set up an empty environment
 for installing Cell BLAST:
 
-`conda create -n cb python=3.6 && source activate cb`
+`conda create -n cb python=3.6 && conda activate cb`
 
 Now follow the instructions below to install Cell BLAST:
 
@@ -40,7 +40,7 @@ Now follow the instructions below to install Cell BLAST:
 2. Install Cell BLAST by running:
    `pip install Cell-BLAST`
 
-3. Check if the package can be imported in python interpreter:
+3. Check if the package can be imported in Python interpreter:
    `import Cell_BLAST as cb`
 
 Online documentation can be found [here](http://cblast.gao-lab.org/doc/index.html).
@@ -52,18 +52,36 @@ off-the-shelf querying of our ACA reference panels.
 
 ## Repository structure
 
-* The `Cell_BLAST` directory contains the Cell BLAST python package.
-* The `Datasets` directory contains scripts used for building the ACA database.
+* The `Cell_BLAST` directory contains the Cell BLAST Python package.
+* The `Datasets` directory contains data metatables and scripts for data collection.
 * The `Evaluation` directory contains scripts used for benchmarking
   and producing some figures of the manuscript.
+* The `Notebooks` directory contains scripts used for additional experiments,
+  case studies, and a pipeline for building the ACA database.
 * The `docs` directory contains files used to generate the online documentation.
-* The `test` directory contains unit tests for the python package.
+* The `test` directory contains unit tests for the Python package.
 
 ## Reproduce results
 
-### Obtain required data files
+### Obtain required data
 
-<!-- TODO: Provide data download information here -->
+For convenience, all required datasets have been packed into two data pack files.
+First download these files to the `Datasets` directory:
+
+* [`ftp://ftp.cbi.pku.edu.cn/pub/cell-blast-download/data_pack.tar.gz`](ftp://ftp.cbi.pku.edu.cn/pub/cell-blast-download/data_pack.tar.gz):
+  Contains datasets required for most benchmarks and case studies, except for
+  those used in the query speed benchmark (because these datasets are especially
+  large, and were packed independently).
+* [`ftp://ftp.cbi.pku.edu.cn/pub/cell-blast-download/data_pack_ext.tar.gz`](ftp://ftp.cbi.pku.edu.cn/pub/cell-blast-download/data_pack_ext.tar.gz):
+  Contains datasets required for the query speed benchmark.
+
+Then extract the files under the `Datasets` directory:
+
+```bash
+# Under the `Datasets` directory
+tar xf "data_pack.tar.gz"
+tar xf "data_pack_ext.tar.gz"
+```
 
 ### Environment setup
 
@@ -87,6 +105,7 @@ All dependencies have already been installed via `env.yml`,
 so `--no-deps` is added to prevent overwriting conda installed packages:
 
 ```bash
+# Under project root
 pip install Cell-BLAST==0.3.7 --no-deps
 pip install local/scScope-0.1.5.tar.gz --no-deps  # Add random seed setting
 pip install local/DCA-0.2.2.tar.gz --no-deps  # Allow GPU memory growth, suppress integer warning
@@ -102,6 +121,7 @@ For scPhere, we use a separate environment because of conflicting dependencies
 (the environment should be named "scphere" for it to be found in the benchmarking pipeline):
 
 ```bash
+# Under project root
 conda create -n scphere 'python>=3.6' 'numpy>=1.16.4' 'scipy>=1.3.0' \
    'pandas>=0.21.0' 'matplotlib>=3.1.0' 'tensorflow=1.14.0' \
    'tensorflow-probability=0.7.0' 'ipykernel' && conda activate scphere
@@ -114,12 +134,14 @@ pip install Cell-BLAST==0.3.7  # Still need cb.data to read data (tf dependent f
 Start R (tested on version `3.6.0`) at project root and run:
 
 ```R
+# Under project root
 packrat::restore()
 ```
 
 Then install the customized version of Seurat by:
 
 ```R
+# Under project root
 install.packages("local/seurat-2.3.3.tar.gz", repos=NULL, type="source")  # Remove fixed random seeds
 ```
 
@@ -128,12 +150,14 @@ For CCA anchor (Seurat v3) and Harmony, we used a separate packrat environment.
 To build this dedicated environment, start R at directory "packrat/envs/seurat_v3" and run:
 
 ```R
+# Under the `packrat/envs/seurat_v3` directory
 packrat::restore()
 ```
 
 Then install the customized version of Seurat v3 by:
 
 ```R
+# Under the `packrat/envs/seurat_v3` directory
 install.packages("../../../local/seurat-3.0.2.tar.gz", repos=NULL, type="source")  # Remove fixed random seeds
 ```
 
@@ -143,6 +167,7 @@ Make sure the conda environment create above is activated.
 Go to directory "Evaluation" and run the following command:
 
 ```bash
+# Under project root
 snakemake -prk
 ```
 
@@ -157,4 +182,4 @@ summarized and plotted without error.
 
 Feel free to submit an issue or contact us at
 [cblast@mail.cbi.pku.edu.cn](mailto:cblast@mail.cbi.pku.edu.cn)
-for problems about the python package, website or database.
+for problems about the Python package, website or database.

@@ -1,42 +1,42 @@
-dataset_name,organism,organ,lifestage,platform,cell_number,publication,pmid,CL,remark,others
-#disease or redundant,,,,,,,,,,
-Quake_10x,Mus musculus,Atlas,,10x,55656,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,30283141,TRUE,cell_type1 is cell ontology class,mtx file
-Quake_Smart-seq2,Mus musculus,Atlas,,Smart-seq2,44949,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,30283141,TRUE,cell_type1 is cell ontology class,mtx file
-Karaiskos_drosophila,Drosophila melanogaster/Drosophila virilis,Atlas,embryo,Drop-seq,1297,The Drosophila embryo at single-cell transcriptome resolution,28860209,FALSE,only cluster without cell type annotation,
-Lake_2016,Homo sapiens,Brain,,snRNA-Seq,3042,Neuronal subtypes and diversity revealed by single-nucleus RNA sequencing of the human brain,27339989,FALSE,Postmortem brain,
-Manno_human,Homo sapiens,Brain,,STRT-Seq UMI,3747,Molecular Diversity of Midbrain Development in Mouse,27716510,,,
-Manno_mouse,Mus musculus,Brain,,STRT-Seq UMI,1761,Molecular Diversity of Midbrain Development in Mouse,27716510,,,
-Marques,Mus musculus,Brain,,C1,5053,Oligodendrocyte heterogeneity in the mouse juvenile and adult central nervous system,27284195,FALSE,Oligodendrocyte from 10 regions of juvenile and adult CNS,
-Romanov,Mus musculus,Brain,,,2881,Molecular interrogation of hypothalamic organization reveals distinct dopamine neuronal subtypes,27991900,FALSE,Central column of the mouse hypothalamus,
-Tasic,Mus musculus,Brain,,SMARTer,1679,Adult mouse cortical cell taxonomy revealed by single cell transcriptomics,26727548,FALSE,Primary visual cortex,
-Usoskin,Mus musculus,Brain,,STRT-Seq,622,Unbiased classification of sensory neuron types by large-scale single-cell RNA sequencing,25420068,FALSE,Lumbar DRG,
-Zeisel_2015,Mus musculus,Brain,,STRT-Seq UMI,3005,Cell types in the mouse cortex and hippocampus revealed by single-cell RNA-seq,25700174,FALSE,Somatosensory cortax,
-Davie,Drosophila melanogaster,Brain,,10x,56902,A Single-Cell Transcriptome Atlas of the Aging Drosophila Brain,29909982,FALSE,brain cells of eight different ages,
-Li,Homo sapiens,Cell Lines,,SMARTer,561,Reference component analysis of single-cell transcriptomes elucidates cellular heterogeneity in human colorectal tumors,28319088,FALSE,,
-Pollen,Homo sapiens,Cell Lines,,SMARTer,301,Low-coverage single-cell mRNA sequencing reveals cellular heterogeneity and activated signaling pathways in developing cerebral cortex,25086649,FALSE,,
-Yan,Homo sapiens,Embryo Devel,,Tang,90,Single-cell RNA-Seq profiling of human preimplantation embryos and embryonic stem cells,23934149,FALSE,Human preimplantation embryos and human embryonic stem cells (hESCs),
-Biase,Mus musculus,Embryo Devel,,SMARTer,56,Cell fate inclination within 2-cell and 4-cell mouse embryos revealed by single-cell RNA sequencing,25096407,TRUE,,
-Deng,Mus musculus,Embryo Devel,,Smart-seq2,268,"Single-cell RNA-seq reveals dynamic, random monoallelic gene expression in mammalian cells",24408435,,,
-Fan,Mus musculus,Embryo Devel,,SUPeR-seq,66,Single-cell RNA-seq transcriptome analysis of linear and circular RNAs in mouse preimplantation embryos,26201400,TRUE,Mouse preimplantation embryos,
-Goolam,Mus musculus,Embryo Devel,,Smart-seq2,124,Heterogeneity in Oct4 and Sox2 Targets Biases Cell Fate in 4-Cell Mouse Embryos,27015307,TRUE,From 2 cell to blastocyst,
-Klein,Mus musculus,ESC,,inDrop,2717,Droplet Barcoding for Single-Cell Transcriptomics Applied to Embryonic Stem Cells,26000487,FALSE,mESC after LIF withdrawal,
-Kolodziejczyk,Mus musculus,ESC,,SMARTer,704,Single Cell RNA-Sequencing of Pluripotent States Unlocks Modular Transcriptional Variation,26431182,FALSE,mESC cultured in different medium,
-Gao,Homo sapiens,"Esophagus, stomach, small intestine and large intestine",fetal,modified STRT-seq,3344,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,TRUE,digestive tract,
-Segerstolpe_disease,Homo sapiens,Pancreas,,Smart-seq2,1098,Single-Cell Transcriptome Profiling of Human Pancreatic Islets in Health and Type 2 Diabetes,27667667,TRUE,Type 2 diabetic donors,
-Xin_2016_disease,Homo sapiens,Pancreas,,SMARTer,883,RNA Sequencing of Single Human Islet Cells Reveals Type 2 Diabetes Genes,27667665,TRUE,Type 2 diabetic donors,
-Lawlor_disease,Homo sapiens,Pancreas,,SMARTer,247,Single-cell transcriptomes identify human islet cell signatures and reveal cell-type_specific expression changes in type 2 diabetes,27864352,TRUE,,
-Haber_10x_organoid,Mus musculus,Small intestine,7-10 week,10x,5434,A single-cell survey of the small intestinal epithelium,29144463,TRUE,,organoid
-Plasschaert_full,Mus musculus,Trachea,adult,inDrop,13453,A single-cell atlas of the airway epithelium reveals the CFTR-rich pulmonary ionocyte,30069046,TRUE,4 WT + injury time course,
-Ordovas-Montanes,Homo sapiens,Nasal cavity,,Seq-Well,18036,Allergic inflammatory memory in human respiratory epithelial progenitor cells,30135581,TRUE,Respiratory epithelium/surgical chronic rhinosinusitis samples. Disease: CRS: chronic rhinosinusitis; AERD: aspirin-exacerbated respiratory disease; CRSwNP: CRS with nasal polyps; HC: health cell.,disease
-#model untrained,,,,,,,,,,
-Magella_10x,Mus musculus,Kidney,E14.5,10x,2161,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,TRUE,,
-Magella_dropseq,Mus musculus,Kidney,E14.5,Drop-seq,1916,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,TRUE,,
-Magella_fluidigm,Mus musculus,Kidney,E14.5,C1,885,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,TRUE,,
-Gao_Esophagus,Homo sapiens,Esophagus,fetal,modified STRT-seq,773,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,TRUE,digestive tract,collect_gao.R
-Gao_Large_Intestine,Homo sapiens,Large Intestine,fetal,modified STRT-seq,849,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,TRUE,digestive tract,collect_gao.R
-Gao_Small_Intestine,Homo sapiens,Small Intestine,fetal,modified STRT-seq,868,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,TRUE,digestive tract,collect_gao.R
-Gao_Stomach,Homo sapiens,Stomach,fetal,modified STRT-seq,854,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,TRUE,digestive tract,collect_gao.R
-Villani,Homo sapiens,PBMC,NA,Smart-seq2,1077,Single-cell RNA-seq reveals new types of human blood dendritic cells,28428369,TRUE,,collect_villani.R
-Dahlin_Smart-seq2,Mus musculus,Bone Marrow,NA,Smart-seq2,141,A single-cell hematopoietic landscape resolves 8 lineage trajectories and defects in Kit mutant mice.,29588278,TRUE,"without quality control; BMCP, GMP",collect_dahlin.R
-Giraddi_C1,Mus musculus,Mammary Gland,"E18, P1, P4, adult",C1,262,Single-Cell Transcriptomes Distinguish Stem Cell State Changes and Lineage Specification Programs in Early Mammary Gland Development.,30089273,TRUE,without cell type annotation,collect_giraddi.R
-#to be collected,,,,,,,,,,
+dataset_name,organism,organ,lifestage,platform,cell_number,publication,pmid,data_source,CL,remark,others
+#disease or redundant,,,,,,,,,,,
+Quake_10x,Mus musculus,Atlas,,10x,55656,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,30283141,,TRUE,cell_type1 is cell ontology class,mtx file
+Quake_Smart-seq2,Mus musculus,Atlas,,Smart-seq2,44949,Single-cell transcriptomics of 20 mouse organs creates a Tabula Muris,30283141,,TRUE,cell_type1 is cell ontology class,mtx file
+Karaiskos_drosophila,Drosophila melanogaster/Drosophila virilis,Atlas,embryo,Drop-seq,1297,The Drosophila embryo at single-cell transcriptome resolution,28860209,,FALSE,only cluster without cell type annotation,
+Lake_2016,Homo sapiens,Brain,,snRNA-Seq,3042,Neuronal subtypes and diversity revealed by single-nucleus RNA sequencing of the human brain,27339989,,FALSE,Postmortem brain,
+Manno_human,Homo sapiens,Brain,,STRT-Seq UMI,3747,Molecular Diversity of Midbrain Development in Mouse,27716510,,,,
+Manno_mouse,Mus musculus,Brain,,STRT-Seq UMI,1761,Molecular Diversity of Midbrain Development in Mouse,27716510,,,,
+Marques,Mus musculus,Brain,,C1,5053,Oligodendrocyte heterogeneity in the mouse juvenile and adult central nervous system,27284195,,FALSE,Oligodendrocyte from 10 regions of juvenile and adult CNS,
+Romanov,Mus musculus,Brain,,,2881,Molecular interrogation of hypothalamic organization reveals distinct dopamine neuronal subtypes,27991900,,FALSE,Central column of the mouse hypothalamus,
+Tasic,Mus musculus,Brain,,SMARTer,1679,Adult mouse cortical cell taxonomy revealed by single cell transcriptomics,26727548,,FALSE,Primary visual cortex,
+Usoskin,Mus musculus,Brain,,STRT-Seq,622,Unbiased classification of sensory neuron types by large-scale single-cell RNA sequencing,25420068,,FALSE,Lumbar DRG,
+Zeisel_2015,Mus musculus,Brain,,STRT-Seq UMI,3005,Cell types in the mouse cortex and hippocampus revealed by single-cell RNA-seq,25700174,,FALSE,Somatosensory cortax,
+Davie,Drosophila melanogaster,Brain,,10x,56902,A Single-Cell Transcriptome Atlas of the Aging Drosophila Brain,29909982,,FALSE,brain cells of eight different ages,
+Li,Homo sapiens,Cell Lines,,SMARTer,561,Reference component analysis of single-cell transcriptomes elucidates cellular heterogeneity in human colorectal tumors,28319088,,FALSE,,
+Pollen,Homo sapiens,Cell Lines,,SMARTer,301,Low-coverage single-cell mRNA sequencing reveals cellular heterogeneity and activated signaling pathways in developing cerebral cortex,25086649,,FALSE,,
+Yan,Homo sapiens,Embryo Devel,,Tang,90,Single-cell RNA-Seq profiling of human preimplantation embryos and embryonic stem cells,23934149,,FALSE,Human preimplantation embryos and human embryonic stem cells (hESCs),
+Biase,Mus musculus,Embryo Devel,,SMARTer,56,Cell fate inclination within 2-cell and 4-cell mouse embryos revealed by single-cell RNA sequencing,25096407,,TRUE,,
+Deng,Mus musculus,Embryo Devel,,Smart-seq2,268,"Single-cell RNA-seq reveals dynamic, random monoallelic gene expression in mammalian cells",24408435,,,,
+Fan,Mus musculus,Embryo Devel,,SUPeR-seq,66,Single-cell RNA-seq transcriptome analysis of linear and circular RNAs in mouse preimplantation embryos,26201400,,TRUE,Mouse preimplantation embryos,
+Goolam,Mus musculus,Embryo Devel,,Smart-seq2,124,Heterogeneity in Oct4 and Sox2 Targets Biases Cell Fate in 4-Cell Mouse Embryos,27015307,,TRUE,From 2 cell to blastocyst,
+Klein,Mus musculus,ESC,,inDrop,2717,Droplet Barcoding for Single-Cell Transcriptomics Applied to Embryonic Stem Cells,26000487,,FALSE,mESC after LIF withdrawal,
+Kolodziejczyk,Mus musculus,ESC,,SMARTer,704,Single Cell RNA-Sequencing of Pluripotent States Unlocks Modular Transcriptional Variation,26431182,,FALSE,mESC cultured in different medium,
+Gao,Homo sapiens,"Esophagus, stomach, small intestine and large intestine",fetal,modified STRT-seq,3344,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,,TRUE,digestive tract,
+Segerstolpe_disease,Homo sapiens,Pancreas,,Smart-seq2,1098,Single-Cell Transcriptome Profiling of Human Pancreatic Islets in Health and Type 2 Diabetes,27667667,,TRUE,Type 2 diabetic donors,
+Xin_2016_disease,Homo sapiens,Pancreas,,SMARTer,883,RNA Sequencing of Single Human Islet Cells Reveals Type 2 Diabetes Genes,27667665,,TRUE,Type 2 diabetic donors,
+Lawlor_disease,Homo sapiens,Pancreas,,SMARTer,247,Single-cell transcriptomes identify human islet cell signatures and reveal cell-type_specific expression changes in type 2 diabetes,27864352,,TRUE,,
+Haber_10x_organoid,Mus musculus,Small intestine,7-10 week,10x,5434,A single-cell survey of the small intestinal epithelium,29144463,,TRUE,,organoid
+Plasschaert_full,Mus musculus,Trachea,adult,inDrop,13453,A single-cell atlas of the airway epithelium reveals the CFTR-rich pulmonary ionocyte,30069046,,TRUE,4 WT + injury time course,
+Ordovas-Montanes,Homo sapiens,Nasal cavity,,Seq-Well,18036,Allergic inflammatory memory in human respiratory epithelial progenitor cells,30135581,,TRUE,Respiratory epithelium/surgical chronic rhinosinusitis samples. Disease: CRS: chronic rhinosinusitis; AERD: aspirin-exacerbated respiratory disease; CRSwNP: CRS with nasal polyps; HC: health cell.,disease
+#model untrained,,,,,,,,,,,
+Magella_10x,Mus musculus,Kidney,E14.5,10x,2161,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,,TRUE,,
+Magella_dropseq,Mus musculus,Kidney,E14.5,Drop-seq,1916,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,,TRUE,,
+Magella_fluidigm,Mus musculus,Kidney,E14.5,C1,885,Cross-platform single cell analysis of kidney development shows stromal cells express Gdnf.,29183737,,TRUE,,
+Gao_Esophagus,Homo sapiens,Esophagus,fetal,modified STRT-seq,773,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,,TRUE,digestive tract,collect_gao.R
+Gao_Large_Intestine,Homo sapiens,Large Intestine,fetal,modified STRT-seq,849,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,,TRUE,digestive tract,collect_gao.R
+Gao_Small_Intestine,Homo sapiens,Small Intestine,fetal,modified STRT-seq,868,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,,TRUE,digestive tract,collect_gao.R
+Gao_Stomach,Homo sapiens,Stomach,fetal,modified STRT-seq,854,Tracing the temporal-spatial transcriptome landscapes of the human fetal digestive tract using single-cell RNA-sequencing,29802404,,TRUE,digestive tract,collect_gao.R
+Villani,Homo sapiens,PBMC,NA,Smart-seq2,1077,Single-cell RNA-seq reveals new types of human blood dendritic cells,28428369,,TRUE,,collect_villani.R
+Dahlin_Smart-seq2,Mus musculus,Bone Marrow,NA,Smart-seq2,141,A single-cell hematopoietic landscape resolves 8 lineage trajectories and defects in Kit mutant mice.,29588278,,TRUE,"without quality control; BMCP, GMP",collect_dahlin.R
+Giraddi_C1,Mus musculus,Mammary Gland,"E18, P1, P4, adult",C1,262,Single-Cell Transcriptomes Distinguish Stem Cell State Changes and Lineage Specification Programs in Early Mammary Gland Development.,30089273,,TRUE,without cell type annotation,collect_giraddi.R
+#to be collected,,,,,,,,,,,

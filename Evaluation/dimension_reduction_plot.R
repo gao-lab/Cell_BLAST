@@ -69,6 +69,12 @@ gp <- ggplot(data = optdf %>% group_by(dataset, method) %>% summarise(
     fill = method
 )) + geom_bar(
     stat = "identity", position = position_dodge(0.85), width = 0.85
+) + geom_point(
+    data = optdf, mapping = aes(
+        x = dataset, y = mean_average_precision, fill = method  # fill is ineffective and only used for position dodge
+    ), size = 0.5, color = "#808080",
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.85),
+    inherit.aes = FALSE, show.legend = FALSE
 ) + geom_errorbar(
     position = position_dodge(0.85), width = 0.2
 ) + scale_x_discrete(
@@ -77,7 +83,7 @@ gp <- ggplot(data = optdf %>% group_by(dataset, method) %>% summarise(
     name = "Mean average precision"
 ) + scale_fill_manual(
     name = "Method", values = color_mapping
-) + coord_cartesian(ylim = c(0.5, 1.0))
+) + coord_cartesian(ylim = c(0.4, 1.0))
 ggsave(snakemake@output[["optmap"]], mod_style(gp), width = 11, height = 4.5)
 
 # Integrative
@@ -85,15 +91,20 @@ optdf_summarize_seed <- optdf %>% group_by(method, dataset) %>% summarise(
     mean_average_precision = mean(mean_average_precision)
 ) %>% arrange(method, dataset) %>% as.data.frame()
 optdf_summarize_dataset <- optdf_summarize_seed %>% group_by(method) %>% summarise(
-    stdev = sd(mean_average_precision),
+    sd = sd(mean_average_precision),
     mean_average_precision = mean(mean_average_precision)
 ) %>% as.data.frame()
 gp <- ggplot(data = optdf_summarize_dataset, mapping = aes(
     x = method, y = mean_average_precision, fill = method,
-    ymin = mean_average_precision - stdev,
-    ymax = mean_average_precision + stdev
+    ymin = mean_average_precision - sd,
+    ymax = mean_average_precision + sd
 )) + geom_bar(
     stat = "identity", width = 0.65
+) + geom_point(
+    data = optdf_summarize_seed, mapping = aes(
+        x = method, y = mean_average_precision
+    ), size = 1, color = "#808080", position = position_jitter(0.2),
+    inherit.aes = FALSE, show.legend = FALSE
 ) + geom_errorbar(
     width = 0.15
 ) + scale_x_discrete(
@@ -104,5 +115,5 @@ gp <- ggplot(data = optdf_summarize_dataset, mapping = aes(
     name = "Mean average precision"
 ) + scale_fill_manual(
     values = color_mapping, name = "Method"
-) + coord_cartesian(ylim = c(0.68, 1.0)) + guides(fill = FALSE)
+) + coord_cartesian(ylim = c(0.55, 1.0)) + guides(fill = FALSE)
 ggsave(snakemake@output[["integrative"]], mod_style(gp, rotate.x = TRUE), width = 7, height = 4)

@@ -13,7 +13,7 @@ fi
 
 read -p "Confirm that ${target} has been properly backed up? [y/n] " yn
 if [[ "$yn" != "y" ]]; then exit 2; fi
-rsync -avzhPL --delete ./_build/html/* ${target}
+rsync -avzhPL --delete ./_build/* ${target}
 echo "Finished!"
  
 exit 0

@@ -80,16 +80,18 @@ levels(df$dataset) <- sapply(levels(df$dataset), function(x) {
     sprintf("%s\n(%s)", x, dataset_meta[x, "platform"])
 })
 prob_df <- df %>% filter(variable == "prob_module")
-prob_df_blank <- prob_df %>% mutate(
-    mean_average_precision = mean_average_precision + 0.0002
-)  # Slighly increase the gap between significance labels and boxes
+prob_df_blank <- prob_df %>% group_by(dataset, value) %>% group_modify(function(.x, .y) {
+    .x$mean_average_precision <- .x$mean_average_precision + 0.5 * sd(.x$mean_average_precision)
+    .x
+}) %>% ungroup() # Slightly increase the gap between significance labels and boxes
 gp <- ggplot(data = prob_df, mapping = aes(
     x = value, y = mean_average_precision,
     col = value, fill = value
 )) + geom_boxplot(alpha = 0.5, width = 0.5) + facet_wrap(
     ~dataset, scales = "free_y", ncol = 3
 ) + stat_compare_means(
-    method = "wilcox.test", label = "p.signif", label.x.npc = "center", size = 3.5
+    mapping = aes(label = paste0(..p.signif.., " (p = ", ..p.format.., ")")),
+    method = "wilcox.test", label.x.npc = 0.3, size = 3.0
 ) + geom_blank(data = prob_df_blank) + scale_x_discrete(
     name = "Generative distribution"
 ) + scale_y_continuous(

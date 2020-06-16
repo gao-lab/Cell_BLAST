@@ -5,3 +5,4 @@ ortholog/*
 GeACT
 marker
 collect/ACA_cell_meta.csv
+*.tar.gz
