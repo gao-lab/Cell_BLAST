@@ -58,8 +58,9 @@ adata = AnnData(X=expr_mat1)
 adata.obs_names = cell_df2.index
 adata.var_names = gene_meta1.index
 adata.raw = adata
-sc.pp.normalize_total(adata, target_sum=1)
-sc_genes = sc.pp.highly_variable_genes(adata, inplace=False, min_mean=1e-5, max_mean = 8e-4, min_disp=1e-8)
+sc.pp.normalize_total(adata, target_sum=1e4)
+sc.pp.log1p(adata)
+sc_genes = sc.pp.highly_variable_genes(adata, inplace=False)
 scanpy_genes = gene_meta1[sc_genes["highly_variable"]].index
 
 #expressed genes
