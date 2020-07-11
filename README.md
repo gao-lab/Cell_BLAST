@@ -43,7 +43,7 @@ Now follow the instructions below to install Cell BLAST:
 3. Check if the package can be imported in Python interpreter:
    `import Cell_BLAST as cb`
 
-Online documentation can be found [here](http://cblast.gao-lab.org/doc/index.html).
+Online documentation can be found [here](http://cblast.gao-lab.org/doc-latest/index.html).
 
 ## Web-based interface
 
