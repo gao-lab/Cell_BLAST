@@ -1413,6 +1413,7 @@ def write_clean(data):
     if not isinstance(data, np.ndarray):
         data = np.array(data)
     if data.dtype.type is np.object_:
+        data = data.copy()
         data[utils.isnan(data)] = config._NAN_REPLACEMENT
     if data.dtype.type in (np.str_, np.object_):
         data = utils.encode(data)
