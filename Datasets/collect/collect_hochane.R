@@ -149,7 +149,7 @@ cell_ontology <- read.csv("../cell_ontology/kidney_cell_ontology.csv")
 cell_ontology <- cell_ontology[, c("cell_type1", "cell_ontology_class", "cell_ontology_id")]
 
 #datasets_meta
-datasets_meta <- read.csv("../ACA_datasets_2.csv", header = TRUE, row.names = 1)
+datasets_meta <- read.csv("../ACA_datasets.csv", header = TRUE, row.names = 1)
 construct_dataset("../data/Hochane", expr_mat_filtered, meta_df_filtered, datasets_meta=datasets_meta, 
                   cell_ontology=cell_ontology, gene_meta = w9_row, grouping = "donor")
 #, min_group_frac = 0.25)

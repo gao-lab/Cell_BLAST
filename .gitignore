@@ -118,7 +118,6 @@ vignettes/*.pdf
 /Results
 ~$*
 tmp*
-*.ipynb
 github
 .DS_Store
 .Rproj.user
@@ -130,3 +129,5 @@ web
 packrat/lib*/
 packrat/src/
 .snakemake
+Notebooks/Case/BLAST2CO/
+*playground*

@@ -1,13 +1,32 @@
-ï»¿cell_type1,full_name,cell_ontology_class,cell_ontology_id,annotation
-amacrine,,amacrine cell,CL:0000561,exact
-muller,,Muller cell,CL:0011107,exact
-astrocytes,,astrocyte,CL:0000127,exact
-bipolar,,retinal bipolar neuron,CL:0000103,exact
-cones,,retinal cone cell,CL:0000573,exact
-fibroblasts,,fibroblast,CL:0000057,exact
-ganglion,,retinal ganglion cell,CL:0000740,exact
-microglia,,microglial cell,CL:0000129,exact
-rods,,retinal rod cell,CL:0000604,exact
-pericytes,,pericyte cell,CL:0000669,exact
-vascular_endothelium,,blood vessel endothelial cell,CL:0000071,exact
-horizontal,,retina horizontal cell,CL:0000745,exact
+cell_type1,full_name,cell_ontology_class,cell_ontology_id,annotation,dataset_name,
+amacrine,,amacrine cell,CL:0000561,exact,,
+muller,,Muller cell,CL:0011107,exact,,
+astrocytes,,astrocyte,CL:0000127,exact,,
+bipolar,,retinal bipolar neuron,CL:0000103,exact,,
+cones,,retinal cone cell,CL:0000573,exact,,
+fibroblasts,,fibroblast,CL:0000057,exact,,
+ganglion,,retinal ganglion cell,CL:0000740,exact,,
+microglia,,microglial cell,CL:0000129,exact,,
+rods,,retinal rod cell,CL:0000604,exact,,
+pericytes,,pericyte cell,CL:0000669,exact,,
+vascular_endothelium,,blood vessel endothelial cell,CL:0000071,exact,,
+horizontal,,retina horizontal cell,CL:0000745,exact,,
+Amacrine CCA9,,amacrine cell,CL:0000561,exact,Lukowski,
+Bipolar CCA2,,retinal bipolar neuron,CL:0000103,exact,,
+Bipolar CCA6,,retinal bipolar neuron,CL:0000103,exact,,
+Bipolar CCA7,,retinal bipolar neuron,CL:0000103,exact,,
+Bipolar CCA8,,retinal bipolar neuron,CL:0000103,exact,,
+Cone PR CCA5,cone photoreceptors,retinal cone cell,CL:0000573,exact,,
+MG CCA4,Muller glia,Muller cell,CL:0011107,exact,,
+Microglia CCA11,,microglial cell,CL:0000129,exact,,
+RGC CCA12,retinal ganglion cells,retinal ganglion cell,CL:0000740,exact,,
+Rod PR CCA0,rod photoreceptors,retinal rod cell,CL:0000604,exact,,
+Rod PR CCA1,rod photoreceptors,retinal rod cell,CL:0000604,exact,,
+Rod PR CCA10,rod photoreceptors,retinal rod cell,CL:0000604,exact,,
+AC,amacrine cells,amacrine cell,CL:0000561,exact,Liang,
+BC,bipolar cells,retinal bipolar neuron,CL:0000103,exact,,
+Cone,,retinal cone cell,CL:0000573,exact,,
+HC,horizontal cells,retina horizontal cell,CL:0000745,exact,,
+MG,M¨¹ller glial cell,Muller cell,CL:0011107,exact,,
+RGC,retinal ganglion cells,retinal ganglion cell,CL:0000740,exact,,
+Rod,,retinal rod cell,CL:0000604,exact,,

@@ -1,21 +1,17 @@
 #! /usr/bin/env python
 # by weil
-# Jul 31, 2019
-# 9:47 PM
+# Sep 13, 2020
+# 7:47 PM
+
 
 import pandas as pd
 import numpy as np
-import sys
-sys.path.append("../../")
 import Cell_BLAST as cb
 import scipy
 import os
 import scanpy as sc
 from anndata import AnnData
-
-output_file = "../data/Cao_2019/data.h5"
-if not os.path.exists(os.path.dirname(output_file)):
-    os.makedirs(os.path.dirname(output_file))
+from utils import construct_dataset
 
 #expression matrix
 raw_data = scipy.io.mmread("../download/Cao_2019/GSE119945_gene_count.txt")
@@ -29,15 +25,11 @@ cell_mask = cell_df["detected_doublet"] == False
 cell_df = cell_df[cell_mask]
 cell_df1 = cell_df.iloc[:, [0,1,2,3,6]]
 cell_df1.columns = ["sample", "donor", "gender", "lifestage", "cell_type1"]
-cell_df1["dataset_name"] = "Cao_2019"
-cell_df1["organism"] = "Mus musculus"
-cell_df1["organ"] = "Embryo"
-cell_df1["platform"] = "sci-RNA-seq3"
+
+# datasets meta
+datasets_meta=pd.read_csv("../ACA_datasets.csv", header=0, index_col=False)
+# cell ontology
 cell_ontology = pd.read_csv("../cell_ontology/mouse_embryo_cell_ontology.csv", usecols=["cell_type1", "cell_ontology_class", "cell_ontology_id"])
-cell_df2 = cell_df1.merge(cell_ontology, left_on="cell_type1", right_on="cell_type1")
-cell_df2.index = cell_df2["sample"]
-cell_df2=cell_df2.loc[cell_df["sample"]]
-cell_df2=cell_df2.iloc[:, 1:11]
 
 #gene_meta
 gene_meta = pd.read_csv("../download/Cao_2019/gene_annotate.csv")
@@ -48,32 +40,9 @@ for element in gene_mask0.values:
 gene_meta.index = gene_meta["gene_short_name"]
 gene_meta1 = gene_meta.iloc[np.where(gene_mask)[0], [0,1]]
 
-
 expr_mat1 = expr_mat1[np.where(cell_mask.values)[0], :]
 expr_mat1 = expr_mat1[:, np.where(gene_mask)[0]]
 
-#Use scanpy for normalization and variable gene selection
-
-adata = AnnData(X=expr_mat1)
-adata.obs_names = cell_df2.index
-adata.var_names = gene_meta1.index
-adata.raw = adata
-sc.pp.normalize_total(adata, target_sum=1e4)
-sc.pp.log1p(adata)
-sc_genes = sc.pp.highly_variable_genes(adata, inplace=False)
-scanpy_genes = gene_meta1[sc_genes["highly_variable"]].index
-
-#expressed genes
-expressed = np.sum(expr_mat1>1, axis=0)>5
-expressed_genes = gene_meta1[np.array(expressed)[0]].index
-
-#saving results
-print("Saving results...")
-cao_2019 = cb.data.ExprDataSet(
-    expr_mat1, cell_df2, gene_meta1, {"scanpy_genes": np.array(scanpy_genes), "expressed_genes": np.array(expressed_genes)}
-)
-
-cao_2019.write_dataset(output_file)
-
-print("Done!")
+construct_dataset("../data/Cao_2019", expr_mat1, cell_df1, gene_meta1,
+                  datasets_meta=datasets_meta, cell_ontology=cell_ontology)
 
