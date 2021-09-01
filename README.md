@@ -32,16 +32,27 @@ Now follow the instructions below to install Cell BLAST:
    dependencies automatically:
 
    For installing the GPU supported version:
-   `conda install tensorflow-gpu=1.8`
+   `conda install tensorflow-gpu=1.12`
 
    For installing the CPU only version:
-   `conda install tensorflow=1.8`
+   `conda install tensorflow=1.12`
 
 2. Install Cell BLAST by running:
    `pip install Cell-BLAST`
 
 3. Check if the package can be imported in Python interpreter:
    `import Cell_BLAST as cb`
+
+## Using docker
+
+Alternatively, we also provide a (test version) docker image, available at
+[caozhijie/cell-blast](https://hub.docker.com/repository/docker/caozhijie/cell-blast).
+
+The docker image has GPU support built in, please follow instructions on
+[nvidia-docker2](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+to install the additional toolkit.
+
+Please contact us if encountered any issue with the image.
 
 ## Documentation
 
@@ -52,16 +63,11 @@ Online documentation can be found [here](http://cblast.gao-lab.org/doc-latest/in
 We also provide a [Web-based service](http://cblast.gao-lab.org/) for
 off-the-shelf querying of our ACA reference panels.
 
-## Repository structure
+## Upcoming changes
 
-* The `Cell_BLAST` directory contains the Cell BLAST Python package.
-* The `Datasets` directory contains data metatables and scripts for data collection.
-* The `Evaluation` directory contains scripts used for benchmarking
-  and producing some figures of the manuscript.
-* The `Notebooks` directory contains scripts used for additional experiments,
-  case studies, and a pipeline for building the ACA database.
-* The `docs` directory contains files used to generate the online documentation.
-* The `test` directory contains unit tests for the Python package.
+The Python package will migrate to using
+[anndata](https://anndata.readthedocs.io/en/latest/index.html)
+as the data class.
 
 ## Reproduce results in the paper
 
