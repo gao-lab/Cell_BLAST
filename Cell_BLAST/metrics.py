@@ -10,6 +10,8 @@ import scipy.sparse
 import sklearn.metrics
 import sklearn.neighbors
 import igraph
+import anndata as ad
+from sklearn.metrics.pairwise import cosine_similarity
 
 from . import blast, utils
 
@@ -373,3 +375,50 @@ def neighbor_preservation_score(
     ])
     ap /= max_ap
     return ap.mean()
+
+
+
+def calc_reference_sas(adata: ad.AnnData, 
+                        batch_effect: str = 'dataset_name',
+                        cell_ontology: str = 'cell_ontology_class',
+                        similarity: typing.Callable = _identity):
+    neighbors_propotion = []
+    n = len(adata.obs[batch_effect].unique())
+    for x in adata.obs[batch_effect].unique():
+        propotion = 0
+        for i in adata.obs[cell_ontology].unique():
+            neighbors = 0
+            own_neighbors = 0
+            for j in adata.obs[cell_ontology].unique():
+                own_neighbors += similarity(i, j) * \
+                    ((adata.obs[cell_ontology] == j) & (adata.obs[batch_effect] == x)).sum()
+                neighbors += similarity(i, j) * \
+                    (adata.obs[cell_ontology] == j).sum()
+
+            propotion += own_neighbors / neighbors * \
+                ((adata.obs[cell_ontology] == i) & (adata.obs[batch_effect] == x)).sum()
+
+        propotion = propotion / (adata.obs[batch_effect] == x).sum()
+        neighbors_propotion.append(propotion)
+    neighbors_propotion = np.mean(neighbors_propotion)
+    return 1 - (neighbors_propotion - 1/n) / (1 - 1/n)
+
+def mean_average_correlation(
+        x: np.ndarray, y: np.ndarray, b: np.ndarray, k: float = 0.001, 
+        metric: str = "minkowski", n_jobs: int = 1
+) -> float:
+
+    if k < 1:
+        k = y.shape[0] * k
+    k = np.round(k).astype(np.int)
+
+    nearestNeighbors = sklearn.neighbors.NearestNeighbors(
+        n_neighbors=min(y.shape[0], k + 1), metric=metric, n_jobs=n_jobs)
+    nearestNeighbors.fit(x)
+    nn = nearestNeighbors.kneighbors(x, return_distance=False)
+    correlation = []
+    for nni in nn:
+        diff = (b != b[nni[0]])[nni]
+        if diff.sum() > 0:
+            correlation.append(cosine_similarity(y[nni[[0]]], y[nni][diff]).mean())
+    return np.float64(np.mean(correlation))

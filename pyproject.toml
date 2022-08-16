@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools", "wheel", "flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "Cell_BLAST"
+version = "0.5.0"
+description = "Single-cell transcriptome querying tool"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Zhi-Jie Cao", email = "caozj@mail.cbi.pku.edu.cn"},
+    {name = "Runwei Lu", email = "lurw2000@126.com"}
+]
+keywords = ["bioinformatics", "deep-learning", "single-cell"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
+dependencies = [
+    "numba>=0.39.0",  # minimal version supporting np.unique
+    "scipy>=1.0.0",  # minimal version supporting scipy.stats.energy_distance
+    "joblib>=0.12.0",  # minimal version supporting locky backend
+    "scikit-learn>=0.17.0",  # normalization issue
+    "tqdm>=4.12.0",  # deprecation warning in the sys module
+    "pandas>=0.21.0",  # optional, anndata requirement
+    "h5py>=2.7.0",  # optional, anndata requirement
+    "python-igraph>=0.7.1",  # only version on conda at the time of packaging
+    "pronto>=0.10.2,<=0.12.2",  # minimal version supporting python 3.6
+    "seaborn>=0.9.0", # minimal version supporting sns.scatterplot
+    "umap-learn>=0.2.1",  # scipy.sparse.csgraph issue
+    "anndata>=0.6.14",  # minimal version supporting write_h5ad
+    "loompy>=2.0.6",  # minimal version to pass tests
+    "statsmodels>=0.8.0",  # python and numpy version compatibility
+    "plotly>=5.8.2",
+    "torch>=1.7.1",
+    "tensorboard>=2.9.1",
+    "scanpy>=1.9.0", # optional, weighting strategy requirement
+    "leidenalg>=0.8.10", # optional, weighting strategy requirement
+    "pynvml>=8.0.1"
+]
+
+[project.optional-dependencies]
+doc = [
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "sphinx-rtd-theme",
+    "ipython",
+    "jinja2",
+    "autodocsumm",
+]
+
+[project.urls]
+Github = "https://github.com/gao-lab/Cell_BLAST-dev"
+
+[tool.flit.sdist]
+exclude = [".*", "D*", "d*", "N*", "t*", "e*"]

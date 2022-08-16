@@ -1,13 +1,16 @@
 # Cell BLAST
 
+[![license-badge](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![pypi-badge](https://img.shields.io/pypi/v/Cell-BLAST)](https://pypi.org/project/Cell-BLAST)
+[![docs-badge](https://readthedocs.org/projects/cblast/badge/?version=latest)](https://cblast.readthedocs.io/en/latest/?badge=latest)
+[![build-badge](https://github.com/gao-lab/Cell_BLAST/actions/workflows/build.yml/badge.svg)](https://github.com/gao-lab/Cell_BLAST/actions/workflows/build.yml)
+
 Cell BLAST is a cell querying tool for single-cell transcriptomics data.
 
 For each query cell, it searches for most similar cells in the reference database.
 Annotations in reference cells, e.g. cell type, can then be transfered to query
 cells based on cell-to-cell similarities. See our
 [publication](https://www.nature.com/articles/s41467-020-17281-7) for details.
-
-![flowchart](docs/_static/flowchart.svg)
 
 ## Installing the Python package
 
@@ -20,54 +23,34 @@ Installation within virtual environments are recommended, see
 For conda, here's a one-liner to set up an empty environment
 for installing Cell BLAST:
 
-`conda create -n cb python=3.6 && conda activate cb`
+`conda create -n cb python=3.9 && conda activate cb`
 
-Now follow the instructions below to install Cell BLAST:
+Then follow the instructions below to install Cell BLAST:
 
-1. Make sure you have a working version of tensorflow or tensorflow-gpu
-   (version >= 1.5). You can follow the
-   [official instructions](https://www.tensorflow.org/install/)
-   about how to install tensorflow (and dependencies like CUDA and CuDNN
-   for the GPU version), or just install via anaconda, which handles
-   dependencies automatically:
+1. Install Cell BLAST from PyPI by running:
 
-   For installing the GPU supported version:
-   `conda install tensorflow-gpu=1.12`
-
-   For installing the CPU only version:
-   `conda install tensorflow=1.12`
-
-2. Install Cell BLAST by running:
    `pip install Cell-BLAST`
 
-3. Check if the package can be imported in Python interpreter:
-   `import Cell_BLAST as cb`
+   Or, install an editable dev version by running the following command
+   under the root directory of this repo:
 
-## Using docker
+   `flit install -s`
 
-Alternatively, we also provide a (test version) docker image, available at
-[caozhijie/cell-blast](https://hub.docker.com/repository/docker/caozhijie/cell-blast).
+2. Check if the package can be imported in the Python interpreter:
 
-The docker image has GPU support built in, please follow instructions on
-[nvidia-docker2](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
-to install the additional toolkit.
-
-Please contact us if encountered any issue with the image.
+   ```python
+   import Cell_BLAST as cb
+   print(cb.__version__)
+   ```
 
 ## Documentation
 
-Online documentation can be found [here](http://cblast.gao-lab.org/doc-latest/index.html).
+Online documentation can be found [here](https://cblast.readthedocs.org/).
 
 ## Web-based interface
 
 We also provide a [Web-based service](http://cblast.gao-lab.org/) for
 off-the-shelf querying of our ACA reference panels.
-
-## Upcoming changes
-
-The Python package will migrate to using
-[anndata](https://anndata.readthedocs.io/en/latest/index.html)
-as the data class.
 
 ## Reproduce results in the paper
 

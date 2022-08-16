@@ -2,6 +2,8 @@ import os
 import sys
 import unittest
 
+import numpy as np
+
 if os.environ.get("TEST_MODE", "INSTALL") == "DEV":
     sys.path.insert(0, "..")
 import Cell_BLAST as cb
@@ -133,20 +135,29 @@ class TestOBOCellTypeDAG(TestJsonCellTypeTree):
         self.assertEqual(result[0], "f")
 
 
-# class TestOBOCellOntology(unittest.TestCase):
-#
-#     def setUp(self):
-#         self.dag = utils.CellTypeDAG.load(
-#             "../Datasets/cell_ontology/github/cl.obo")
-#
-#     def test_pass(self):
-#         pass
+class TestHybridPath(unittest.TestCase):
 
-# # Snippet for drawing subgraph related to vertex v
-# igraph.drawing.plot(dag.graph.subgraph(
-#     [item.index for item in dag.graph.bfsiter(v.index, mode=igraph.OUT)] +
-#     [item.index for item in dag.graph.bfsiter(v.index, mode=igraph.IN)],
-# ), "test.svg", margin=(100, 100, 100, 100))
+    @classmethod
+    def setUpClass(cls):
+        cls.m1 = np.array([
+            [2, 1, 0],
+            [3, 0, 0],
+            [0, 4, 5]
+        ])
+        cls.v2 = np.array(["a", "s", "d"])
+
+    def test_hybrid_path(self):
+        cb.utils.write_hybrid_path(self.m1, "./test.h5//a")
+        cb.utils.write_hybrid_path(self.v2, "./test.h5//b/c")
+        m1 = cb.utils.read_hybrid_path("./test.h5//a")
+        v2 = cb.utils.read_hybrid_path("./test.h5//b/c")
+        self.assertTrue(np.all(self.m1 == m1))
+        self.assertTrue(np.all(self.v2 == v2))
+
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists("./test.h5"):
+            os.remove("./test.h5")
 
 
 if __name__ == "__main__":

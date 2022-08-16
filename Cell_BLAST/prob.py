@@ -2,292 +2,293 @@ r"""
 Probabilistic / decoder modules for DIRECTi
 """
 
+import math
+import torch
+from torch import nn
+import torch.nn.functional as F
 import typing
-import abc
+from .rebuild import Linear
+from .rebuild import MLP
+from . import utils
 
-import numpy as np
-import tensorflow as tf
-
-from . import module, nn
-
-
-class ProbModel(module.Module):
+class ProbModel(nn.Module):
     r"""
     Abstract base class for generative model modules.
     """
     def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name: str = "ProbModel"
+            self, output_dim: int, full_latent_dim: typing.Tuple[int],
+            h_dim: int = 128, depth: int = 1,
+            dropout: float = 0.0, lambda_reg: float = 0.0,
+            fine_tune: bool = False, deviation_reg: float = 0.0,
+            name: str = "ProbModel",
+            _class: str = "ProbModel",
+            **kwargs
     ) -> None:
-        super(ProbModel, self).__init__(name=name)
+        super().__init__()
+        self.output_dim = output_dim
+        self.full_latent_dim = full_latent_dim
         self.h_dim = h_dim
         self.depth = depth
         self.dropout = dropout
         self.lambda_reg = lambda_reg
         self.fine_tune = fine_tune
         self.deviation_reg = deviation_reg
-        self.deviation_regularizer = \
-            (lambda x: self.deviation_reg * tf.reduce_mean(tf.square(x))) \
-            if self.fine_tune and self.deviation_reg > 0 else None
+        self.name = name
+        self._class = _class
+        self.record_prefix = 'decoder'
 
-    @staticmethod
-    def _normalize(  # pylint: disable=unused-argument
-            x: typing.Union[np.ndarray, tf.Tensor],
-            library_size: typing.Union[np.ndarray, tf.Tensor]
-    ) -> typing.Union[np.ndarray, tf.Tensor]:  # pragma: no cover
-        return x
+        for key in kwargs.keys():
+            utils.logger.warning("Argument `%s` is no longer supported!" % key)
 
-    @staticmethod
-    def _add_noise(  # pylint: disable=unused-argument
-            x: typing.Union[np.ndarray, tf.Tensor],
-            random_state: typing.Optional[np.random.RandomState] = None
-    ) -> typing.Union[np.ndarray, tf.Tensor]:  # pragma: no cover
-        return x
-
-    @staticmethod
-    def _preprocess(x: tf.Tensor) -> tf.Tensor:
-        return x
-
-    def _loss(
-            self, ref: tf.Tensor, latent: tf.Tensor, training_flag: tf.Tensor,
-            tail_concat: typing.Optional[typing.List[tf.Tensor]] = None,
-            scope: str = "decoder"
-    ) -> tf.Tensor:
-        with tf.variable_scope(f"{scope}/{self.scope_safe_name}"):
-            dropout = np.zeros(self.depth)
-            dropout[1:] = self.dropout  # No dropout for first layer
-            mlp_kwargs = dict(
-                dropout=dropout.tolist(), dense_kwargs=dict(
-                    deviation_regularizer=self.deviation_regularizer
-                ), training_flag=training_flag
-            )
-            ptr = nn.mlp(latent, [self.h_dim] * self.depth, **mlp_kwargs)
-            ptr = (ptr if isinstance(ptr, list) else [ptr]) + (tail_concat or [])
-            self.log_likelihood = self._log_likelihood(ref, ptr)
-            self.mean_log_likelihood = tf.reduce_mean(self.log_likelihood, axis=1)  # feature size invariant
-            raw_loss = tf.negative(tf.reduce_mean(self.mean_log_likelihood), name="raw_loss")
-            regularized_loss = tf.add(
-                raw_loss, self.lambda_reg * self._build_regularizer(),
-                name="regularized_loss"
-            )
-        self.vars_to_save += tf.get_collection(
-            tf.GraphKeys.GLOBAL_VARIABLES, f"{scope}/{self.scope_safe_name}")
-        tf.add_to_collection(tf.GraphKeys.LOSSES, raw_loss)
-        tf.add_to_collection(tf.GraphKeys.LOSSES, regularized_loss)
-        return regularized_loss
-
-    @abc.abstractmethod
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:  # pragma: no cover
-        raise NotImplementedError
-
-    def _build_regularizer(self) -> tf.Tensor:
-        return 0
-
-    def _get_config(self) -> typing.Mapping:
+        i_dim = [full_latent_dim] + [h_dim] * (depth - 1) if depth > 0 else []
+        o_dim = [h_dim] * depth
+        dropout = [dropout] * depth
+        if depth > 0:
+            dropout[0] = 0.0
+        self.mlp = MLP(i_dim, o_dim, dropout)
+    
+    def get_config(self) -> typing.Mapping:
         return {
+            "output_dim": self.output_dim,
+            "full_latent_dim": self.full_latent_dim,
             "h_dim": self.h_dim,
             "depth": self.depth,
             "dropout": self.dropout,
             "lambda_reg": self.lambda_reg,
             "fine_tune": self.fine_tune,
             "deviation_reg": self.deviation_reg,
-            **super(ProbModel, self)._get_config()
+            "name": self.name,
+            "_class": self._class
         }
 
-    def __bool__(self) -> bool:
-        return True
-
-
-class CountBased(ProbModel):  # pylint: disable=abstract-method
-
-    @staticmethod
-    def _normalize(
-            x: typing.Union[np.ndarray, tf.Tensor],
-            library_size: typing.Union[np.ndarray, tf.Tensor]
-    ) -> typing.Union[tf.Tensor]:
-        return x / (library_size / 10000)
-
-    @staticmethod
-    def _add_noise(
-            x: typing.Union[np.ndarray, tf.Tensor],
-            random_state: typing.Optional[np.random.RandomState] = None
-    ) -> typing.Union[np.ndarray, tf.Tensor]:
-        if random_state is None:
-            return tf.squeeze(tf.random_poisson(x, [1]), axis=0)
-        else:
-            return random_state.poisson(x)
-
-    @staticmethod
-    def _preprocess(x: tf.Tensor) -> tf.Tensor:
-        return tf.log1p(x)
-
-
-class NB(CountBased):  # Negative binomial
+class NB(ProbModel):  # Negative binomial
     r"""
     Build a Negative Binomial generative module.
-
+    
     Parameters
     ----------
+    output_dim
+        Dimensionality of the output tensor.
+    full_latent_dim
+        Dimensionality of the latent variable and Numbers of batches.
     h_dim
         Dimensionality of the hidden layers in the decoder MLP.
     depth
         Number of hidden layers in the decoder MLP.
     dropout
         Dropout rate.
-    fine_tune
-        Whether the module is used in fine-tuning.
     lambda_reg
         Regularization strength for the generative model parameters.
         Here log-scale variance of the scale parameter
         is regularized to improve numerical stability.
+    fine_tune
+        Whether the module is used in fine-tuning.
     deviation_reg
         Regularization strength for the deviation from original model weights.
     name
         Name of the module.
     """
     def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name: str = "NB"
+            self, 
+            output_dim: int,
+            full_latent_dim: typing.Tuple[int],
+            h_dim: int = 128,
+            depth: int = 1,
+            dropout: float = 0.0,
+            lambda_reg: float = 0.0,
+            fine_tune: bool = False,
+            deviation_reg: float = 0.0,
+            name: str = "NB",
+            _class: str = "NB",
+            **kwargs
     ) -> None:
-        super(NB, self).__init__(
-            h_dim, depth, dropout, lambda_reg,
-            fine_tune, deviation_reg, name=name
+        super().__init__(
+            output_dim, full_latent_dim, h_dim, depth, dropout, lambda_reg,
+            fine_tune, deviation_reg, name, _class, **kwargs
         )
 
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:
-        recon_dim = ref.get_shape().as_list()[1]
-        self.softmax_mu = tf.nn.softmax(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="softmax_mu_dense"
-        ), name="softmax_mu")
-        self.log_theta = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="log_theta_dense"
-        ), name="log_theta")
-        self.recon = mu = \
-            self.softmax_mu * tf.reduce_sum(ref, axis=1, keepdims=True)
-        return self._log_nb_positive(ref, mu, self.log_theta)
-
-    def _build_regularizer(self) -> tf.Tensor:
-        with tf.name_scope("regularization"):
-            return tf.nn.moments(self.log_theta, axes=[0, 1])[1]
-
+        self.mu = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+        self.softmax = nn.Softmax(dim = 1)
+        self.log_theta = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+    
+    #fine-tune
+    def save_origin_state(self) -> None:
+        self.mlp.save_origin_state()
+        self.mu.save_origin_state()
+        self.log_theta.save_origin_state()
+    
+    #fine-tune
+    def deviation_loss(self) -> torch.Tensor:
+        return self.deviation_reg * \
+            (self.mlp.deviation_loss() + self.mu.deviation_loss() + self.log_theta.deviation_loss())
+    
+    #fine_tune
+    def check_fine_tune(self) -> None:
+        if self.fine_tune:
+            self.save_origin_state()
+    
     @staticmethod
-    def _log_nb_positive(
-            x: tf.Tensor, mu: tf.Tensor, log_theta: tf.Tensor,
-            eps: float = 1e-8
-    ) -> tf.Tensor:
-        with tf.name_scope("log_nb_positive"):
-            theta = tf.exp(log_theta)
-            return theta * log_theta \
-                - theta * tf.log(theta + mu + eps) \
-                + x * tf.log(mu + eps) - x * tf.log(theta + mu + eps) \
-                + tf.lgamma(x + theta) - tf.lgamma(theta) \
-                - tf.lgamma(x + 1)
+    def log_likelihood(x: torch.Tensor, mu: torch.Tensor, log_theta: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+        theta = torch.exp(log_theta)
+        return theta * log_theta \
+            - theta * torch.log(theta + mu + eps) \
+            + x * torch.log(mu + eps) - x * torch.log(theta + mu + eps) \
+            + torch.lgamma(x + theta) - torch.lgamma(theta) \
+            - torch.lgamma(x + 1)
+    
+    def forward(self, full_x: typing.Tuple[torch.Tensor], feed_dict: typing.Mapping) -> torch.Tensor:
+        
+        y = feed_dict['exprs']
+        x = self.mlp(full_x)
+        
+        softmax_mu = self.softmax(self.mu(x))
+        mu = softmax_mu * y.sum(dim = 1, keepdim = True)
+        log_theta = self.log_theta(x)
+        return mu, log_theta
+    
+    def loss(self, mu_theta: typing.Tuple[torch.Tensor],
+                    feed_dict: typing.Mapping, loss_record: typing.Mapping) -> torch.Tensor:
+
+        y = feed_dict['exprs']
+        mu, log_theta = mu_theta
+
+        raw_loss = -self.log_likelihood(y, mu, log_theta).mean()
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] += raw_loss.item() * mu.shape[0]
+        reg_loss = raw_loss + self.lambda_reg * log_theta.var()
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] += reg_loss.item() * mu.shape[0]
+
+        if self.fine_tune:
+            return reg_loss + self.deviation_reg * self.deviation_loss()
+        else:
+            return reg_loss
+    
+    def init_loss_record(self, loss_record: typing.Mapping) -> None:
+        
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] = 0
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] = 0
 
 
-class ZINB(NB):  # Zero-inflated negative binomial
+class ZINB(NB):
     r"""
     Build a Zero-Inflated Negative Binomial generative module.
-
+    
     Parameters
     ----------
+    output_dim
+        Dimensionality of the output tensor.
+    full_latent_dim
+        Dimensionality of the latent variable and Numbers of batches.
     h_dim
         Dimensionality of the hidden layers in the decoder MLP.
     depth
         Number of hidden layers in the decoder MLP.
     dropout
         Dropout rate.
-    fine_tune
-        Whether the module is used in fine-tuning.
     lambda_reg
         Regularization strength for the generative model parameters.
         Here log-scale variance of the scale parameter
         is regularized to improve numerical stability.
+    fine_tune
+        Whether the module is used in fine-tuning.
     deviation_reg
         Regularization strength for the deviation from original model weights.
     name
         Name of the module.
     """
     def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name: str = "ZINB"
+            self, 
+            output_dim: int,
+            full_latent_dim: typing.Tuple[int],
+            h_dim: int = 128,
+            depth: int = 1,
+            dropout: float = 0.0,
+            lambda_reg: float = 0.0,
+            fine_tune: bool = False,
+            deviation_reg: float = 0.0,
+            name: str = "ZINB",
+            _class: str = "ZINB",
+            **kwargs
     ) -> None:
-        super(ZINB, self).__init__(
-            h_dim, depth, dropout, lambda_reg,
-            fine_tune, deviation_reg, name=name
+        super().__init__(
+            output_dim, full_latent_dim, h_dim, depth, dropout, lambda_reg,
+            fine_tune, deviation_reg, name, _class, **kwargs
         )
 
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:
-        recon_dim = ref.get_shape().as_list()[1]
-        self.softmax_mu = tf.nn.softmax(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="softmax_mu_dense"
-        ), name="softmax_mu")
-        self.log_theta = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="log_theta_dense"
-        ), name="log_theta")
-        self.pi = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="dropout_logit_dense"
-        ), name="dropout_logit")
-        self.recon = mu = \
-            self.softmax_mu * tf.reduce_sum(ref, axis=1, keepdims=True)
-        self.dropout_rate = tf.sigmoid(self.pi)
-        return self._log_zinb_positive(ref, mu, self.log_theta, self.pi)
-
+        self.pi = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+    
+    #fine-tune
+    def save_origin_state(self) -> None:
+        self.mlp.save_origin_state()
+        self.mu.save_origin_state()
+        self.log_theta.save_origin_state()
+        self.pi.save_origin_state()
+    
+    #fine-tune
+    def deviation_loss(self) -> torch.Tensor:
+        return self.deviation_reg * \
+            (self.mlp.deviation_loss() + self.mu.deviation_loss() + self.log_theta.deviation_loss() + self.pi.deviation_loss())
+    
+    #fine_tune
+    def check_fine_tune(self) -> None:
+        if self.fine_tune:
+            self.save_origin_state()
+    
     @staticmethod
-    def _log_zinb_positive(
-            x: tf.Tensor, mu: tf.Tensor, log_theta: tf.Tensor,
-            pi: tf.Tensor, eps: float = 1e-8
-    ) -> tf.Tensor:
-        r"""
-        From scVI
-        """
-        with tf.name_scope("log_zinb_positive"):
-            theta = tf.exp(log_theta)
-            with tf.name_scope("case_zero"):
-                case_zero = tf.nn.softplus(
-                    - pi + theta * log_theta -
-                    theta * tf.log(theta + mu + eps)
-                ) - tf.nn.softplus(- pi)
-            with tf.name_scope("case_non_zero"):
-                case_non_zero = - pi - tf.nn.softplus(- pi) \
-                    + theta * log_theta \
-                    - theta * tf.log(theta + mu + eps) \
-                    + x * tf.log(mu + eps) - x * tf.log(theta + mu + eps) \
-                    + tf.lgamma(x + theta) - tf.lgamma(theta) \
-                    - tf.lgamma(x + 1)
-            with tf.name_scope("mixture"):
-                mask = tf.cast(tf.less(x, eps), tf.float32)
-                res = tf.identity(
-                    tf.multiply(mask, case_zero) +
-                    tf.multiply(1 - mask, case_non_zero),
-                    name="likelihood")
-            return res
+    def log_likelihood(x: torch.Tensor, mu: torch.Tensor, log_theta: torch.Tensor, pi: torch.tensor, eps: float = 1e-8) -> torch.Tensor:
+        theta = torch.exp(log_theta)
+        case_zero = F.softplus(
+            - pi + theta * log_theta -
+            theta * torch.log(theta + mu + eps)
+        ) - F.softplus(- pi)
+        case_non_zero = - pi - F.softplus(- pi) \
+            + theta * log_theta \
+            - theta * torch.log(theta + mu + eps) \
+            + x * torch.log(mu + eps) - x * torch.log(theta + mu + eps) \
+            + torch.lgamma(x + theta) - torch.lgamma(theta) \
+            - torch.lgamma(x + 1)
+        mask = (x < eps).float()
+        res = mask * case_zero + (1 - mask) * case_non_zero
+        return res
+    
+    def forward(self, full_x: typing.Tuple[torch.Tensor], feed_dict: typing.Mapping) -> torch.Tensor:
+        
+        y = feed_dict['exprs']
+        x = self.mlp(full_x)
+        
+        softmax_mu = self.softmax(self.mu(x))
+        mu = softmax_mu * y.sum(dim = 1, keepdim = True)
+        log_theta = self.log_theta(x)
+
+        pi = self.pi(x)
+        return mu, log_theta, pi
+    
+    def loss(self, mu_theta_pi: typing.Tuple[torch.Tensor],
+                    feed_dict: typing.Mapping, loss_record: typing.Mapping) -> torch.Tensor:
+
+        y = feed_dict['exprs']
+        mu, log_theta, pi = mu_theta_pi
+
+        raw_loss = -self.log_likelihood(y, mu, log_theta, pi).mean()
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] += raw_loss.item() * mu.shape[0]
+        reg_loss = raw_loss + self.lambda_reg * log_theta.var()
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] += reg_loss.item() * mu.shape[0]
+
+        if self.fine_tune:
+            return reg_loss + self.deviation_reg * self.deviation_loss()
+        else:
+            return reg_loss
 
 
-class LN(CountBased):
+class LN(ProbModel):
     r"""
     Build a Log Normal generative module.
-
+    
     Parameters
     ----------
+    output_dim
+        Dimensionality of the output tensor.
+    full_latent_dim
+        Dimensionality of the latent variable and Numbers of batches.
     h_dim
         Dimensionality of the hidden layers in the decoder MLP.
     depth
@@ -304,50 +305,89 @@ class LN(CountBased):
         Name of the module.
     """
     def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name: str = "LN"
+            self, 
+            output_dim: int,
+            full_latent_dim: typing.Tuple[int],
+            h_dim: int = 128,
+            depth: int = 1,
+            dropout: float = 0.0,
+            lambda_reg: float = 0.0,
+            fine_tune: bool = False,
+            deviation_reg: float = 0.0,
+            name: str = "LN",
+            _class: str = "LN",
+            **kwargs
     ) -> None:
-        super(LN, self).__init__(
-            h_dim, depth, dropout, lambda_reg,
-            fine_tune, deviation_reg, name=name
+        super().__init__(
+            output_dim, full_latent_dim, h_dim, depth, dropout, lambda_reg,
+            fine_tune, deviation_reg, name, _class, **kwargs
         )
 
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:
-        recon_dim = ref.get_shape().as_list()[1]
-        self.mu = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="mu_dense"
-        ), name="mu")
-        self.log_var = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="log_var_dense"
-        ), name="log_var")
-        self.recon = tf.expm1(self.mu)
-        return self._log_ln_positive(
-            tf.log1p(ref), self.mu, self.log_var)
-
+        self.mu = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+        self.log_var = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+    
+    #fine-tune
+    def save_origin_state(self) -> None:
+        self.mlp.save_origin_state()
+        self.mu.save_origin_state()
+        self.log_var.save_origin_state()
+    
+    #fine-tune
+    def deviation_loss(self) -> torch.Tensor:
+        return self.deviation_reg * \
+            (self.mlp.deviation_loss() + self.mu.deviation_loss() + self.log_var.deviation_loss())
+    
+    #fine_tune
+    def check_fine_tune(self) -> None:
+        if self.fine_tune:
+            self.save_origin_state()
+    
     @staticmethod
-    def _log_ln_positive(
-            x: tf.Tensor, mu: tf.Tensor, log_var: tf.Tensor
-    ) -> tf.Tensor:
-        with tf.name_scope("log_ln"):
-            return - 0.5 * (
-                tf.square(x - mu) / tf.exp(log_var)
-                + tf.log(2 * np.pi) + log_var
+    def log_likelihood(x: torch.Tensor, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
+        return - 0.5 * (
+                torch.square(x - mu) / torch.exp(log_var)
+                + math.log(2 * math.pi) + log_var
             )
+    
+    def forward(self, full_x: typing.Tuple[torch.Tensor], feed_dict: typing.Mapping) -> torch.Tensor:
+        
+        x = self.mlp(full_x)
+        mu = torch.expm1(self.mu(x))
+        log_var = self.log_var(x)
+        return mu, log_var
+    
+    def loss(self, mu_var: typing.Tuple[torch.Tensor],
+                    feed_dict: typing.Mapping, loss_record: typing.Mapping) -> torch.Tensor:
+
+        y = feed_dict['exprs']
+        mu, log_var = mu_var
+
+        raw_loss = -self.log_likelihood(torch.log1p(y), mu, log_var).mean()
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] += raw_loss.item() * mu.shape[0]
+        reg_loss = raw_loss
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] += reg_loss.item() * mu.shape[0]
+
+        if self.fine_tune:
+            return reg_loss + self.deviation_reg * self.deviation_loss()
+        else:
+            return reg_loss
+    
+    def init_loss_record(self, loss_record: typing.Mapping) -> None:
+        
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] = 0
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] = 0
 
 
 class ZILN(LN):
     r"""
     Build a Zero-Inflated Log Normal generative module.
-
+    
     Parameters
     ----------
+    output_dim
+        Dimensionality of the output tensor.
+    full_latent_dim
+        Dimensionality of the latent variable and Numbers of batches.
     h_dim
         Dimensionality of the hidden layers in the decoder MLP.
     depth
@@ -364,81 +404,80 @@ class ZILN(LN):
         Name of the module.
     """
     def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name: str = "ZILN"
+            self, 
+            output_dim: int,
+            full_latent_dim: typing.Tuple[int],
+            h_dim: int = 128,
+            depth: int = 1,
+            dropout: float = 0.0,
+            lambda_reg: float = 0.0,
+            fine_tune: bool = False,
+            deviation_reg: float = 0.0,
+            name: str = "ZILN",
+            _class: str = "ZILN",
+            **kwargs
     ) -> None:
-        super(ZILN, self).__init__(
-            h_dim, depth, dropout, lambda_reg,
-            fine_tune, deviation_reg, name=name
+        super().__init__(
+            output_dim, full_latent_dim, h_dim, depth, dropout, lambda_reg,
+            fine_tune, deviation_reg, name, _class, **kwargs
         )
 
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:
-        recon_dim = ref.get_shape().as_list()[1]
-        self.mu = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="mu_dense"
-        ), name="mu")
-        self.log_var = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="log_var_dense"
-        ), name="log_var")
-        self.pi = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="dropout_logit_dense"
-        ), name="dropout_logit")
-        self.recon = tf.expm1(self.mu)
-        self.dropout_rate = tf.sigmoid(self.pi)
-        return self._log_ziln_positive(
-            tf.log1p(ref), self.mu, self.log_var, self.pi)
-
+        self.pi = Linear(h_dim, output_dim) if depth > 0 else Linear(full_latent_dim, output_dim)
+    
+    #fine-tune
+    def save_origin_state(self) -> None:
+        self.mlp.save_origin_state()
+        self.mu.save_origin_state()
+        self.log_var.save_origin_state()
+        self.pi.save_origin_state()
+    
+    #fine-tune
+    def deviation_loss(self) -> torch.Tensor:
+        return self.deviation_reg * \
+            (self.mlp.deviation_loss() + self.mu.deviation_loss() + self.log_var.deviation_loss() + self.pi.deviation_loss())
+    
+    #fine_tune
+    def check_fine_tune(self) -> None:
+        if self.fine_tune:
+            self.save_origin_state()
+    
     @staticmethod
-    def _log_ziln_positive(
-            x: tf.Tensor, mu: tf.Tensor, log_var: tf.Tensor,
-            pi: tf.Tensor, eps: float = 1e-8
-    ) -> tf.Tensor:
-        with tf.name_scope("log_ziln"):
-            with tf.name_scope("case_zero"):
-                case_zero = - tf.nn.softplus(- pi)
-            with tf.name_scope("case_non_zero"):
-                case_non_zero = - pi - tf.nn.softplus(- pi) - 0.5 * (
-                    tf.square(x - mu) / tf.exp(log_var)
-                    + tf.log(2 * np.pi) + log_var
-                )
-            with tf.name_scope("mixture"):
-                mask = tf.cast(tf.less(x, eps), tf.float32)
-                res = tf.identity(
-                    tf.multiply(mask, case_zero) +
-                    tf.multiply(1 - mask, case_non_zero),
-                    name="likelihood"
-                )
-            return res
+    def log_likelihood(x: torch.Tensor, mu: torch.Tensor, log_var: torch.Tensor, pi: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+        case_zero = - F.softplus(- pi)
+        case_non_zero = - pi - F.softplus(- pi) - 0.5 * (
+            torch.square(x - mu) / torch.exp(log_var)
+            + math.log(2 * math.pi) + log_var
+        )
+        mask = (x < eps).float()
+        res = mask * case_zero + (1 - mask) * case_non_zero
+        return res
+    
+    def forward(self, full_x: typing.Tuple[torch.Tensor], feed_dict: typing.Mapping) -> torch.Tensor:
+        
+        x = self.mlp(full_x)
+        mu = torch.expm1(self.mu(x))
+        log_var = self.log_var(x)
+        pi = self.pi(x)
+        return mu, log_var, pi
+    
+    def loss(self, mu_var_pi: typing.Tuple[torch.Tensor],
+                    feed_dict: typing.Mapping, loss_record: typing.Mapping) -> torch.Tensor:
+
+        y = feed_dict['exprs']
+        mu, log_var, pi = mu_var_pi
+
+        raw_loss = -self.log_likelihood(torch.log1p(y), mu, log_var, pi).mean()
+        loss_record[self.record_prefix + '/' + self.name + '/raw_loss'] += raw_loss.item() * mu.shape[0]
+        reg_loss = raw_loss
+        loss_record[self.record_prefix + '/' + self.name + '/regularized_loss'] += reg_loss.item() * mu.shape[0]
+
+        if self.fine_tune:
+            return reg_loss + self.deviation_reg * self.deviation_loss()
+        else:
+            return reg_loss
 
 
 class MSE(ProbModel):
-
-    def __init__(
-            self, h_dim: int = 128, depth: int = 1, dropout: float = 0.0,
-            lambda_reg: float = 0.0, fine_tune: bool = False,
-            deviation_reg: float = 0.0, name="MSE"
-    ) -> None:
-        super(MSE, self).__init__(
-            h_dim, depth, dropout, lambda_reg,
-            fine_tune, deviation_reg, name=name
-        )
-
-    def _log_likelihood(
-            self, ref: tf.Tensor, pre_recon: typing.List[tf.Tensor]
-    ) -> tf.Tensor:
-        recon_dim = ref.get_shape().as_list()[1]
-        self.mu = tf.identity(nn.dense(
-            pre_recon, recon_dim,
-            deviation_regularizer=self.deviation_regularizer,
-            scope="mu_dense"
-        ), name="mu")
-        return tf.negative(tf.square(ref - self.mu))
+    def __init__(self, *args, **kwargs):
+        utils.logger.warning("Prob module `MSE` is no longer supported, running as `ProbModel`")
+        super().__init__(*args, **kwargs)

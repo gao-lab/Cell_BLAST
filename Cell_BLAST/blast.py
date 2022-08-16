@@ -3,8 +3,8 @@ Cell BLAST based on DIRECTi models
 """
 
 import collections
-import glob
 import os
+import re
 import typing
 import tempfile
 
@@ -15,6 +15,7 @@ import pandas as pd
 import scipy.sparse
 import scipy.stats
 import sklearn.neighbors
+import anndata
 
 from . import config, data, directi, metrics, utils
 
@@ -446,15 +447,15 @@ class BLAST(object):
 
     def __init__(
             self, models: typing.List[directi.DIRECTi],
-            ref: data.ExprDataSet, distance_metric: str = "npd_v1",
+            ref: anndata.AnnData, distance_metric: str = "npd_v1",
             n_posterior: int = 50, n_empirical: int = 10000,
             cluster_empirical: bool = False, eps: typing.Optional[float] = None,
             force_components: bool = True, **kwargs
     ) -> None:
         self.models = models
-        self.ref = data.ExprDataSet(
-            ref.exprs, ref.obs.copy(), ref.var.copy(), ref.uns.copy()
-        )  # exprs and uns are shallow copied, obs and var are deep copied
+        self.ref = anndata.AnnData(
+            X=ref.X, obs=ref.obs.copy(), var=ref.var.copy(), uns=ref.uns.copy()
+        )  # X and uns are shallow copied, obs and var are deep copied
 
         self.latent = None
         self.nearest_neighbors = None
@@ -527,7 +528,7 @@ class BLAST(object):
             utils.logger.info("Sampling from posteriors...")
             new_ref = self.ref[new_idx, :]
             new_posterior = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="threading"
+                n_jobs=min(n_jobs, len(self)), backend="loky"
             )(joblib.delayed(model.inference)(
                 new_ref, n_posterior=self.n_posterior, random_seed=random_seed
             ) for model in self.models), axis=1)  # n_cells * n_models * n_posterior * latent_dim
@@ -668,13 +669,10 @@ class BLAST(object):
         if self.ref is not None:
             if only_used_genes:
                 if "__libsize__" not in self.ref.obs.columns:
-                    self.ref.obs["__libsize__"] = np.array(
-                        self.ref.exprs.sum(axis=1)
-                    ).ravel()
-                    # So that align will still work properly
-                ref = self.ref[:, np.unique(np.concatenate([
+                    data.compute_libsize(self.ref)  # So that align will still work properly
+                ref = data.select_vars(self.ref, np.unique(np.concatenate([
                     model.genes for model in self.models
-                ]))]
+                ])))
             ref.uns["distance_metric"] = self.distance_metric.__name__
             ref.uns["n_posterior"] = self.n_posterior
             ref.uns["n_empirical"] = self.n_empirical
@@ -687,7 +685,7 @@ class BLAST(object):
             if self.empirical is not None:
                 ref.uns["empirical"] = {str(i): item for i, item in enumerate(self.empirical)}
             ref.uns["posterior"] = {str(i): item for i, item in enumerate(self.posterior) if item is not None}
-            ref.write_dataset(os.path.join(path, "ref.h5"))
+            ref.write(os.path.join(path, "ref.h5ad"))
         for i in range(len(self)):
             self.models[i].save(os.path.join(path, f"model_{i}"))
 
@@ -711,9 +709,14 @@ class BLAST(object):
             Loaded BLAST object.
         """
         assert mode in (NORMAL, MINIMAL)
-        ref = data.ExprDataSet.read_dataset(os.path.join(path, "ref.h5"))
+        ref = anndata.read_h5ad(os.path.join(path, "ref.h5ad"))
         models = []
-        for model_path in sorted(glob.glob(os.path.join(path, "model_*"))):
+        model_paths = sorted(
+            os.path.join(path, d) for d in os.listdir(path)
+            if re.fullmatch(r'model_[0-9]+', d)
+            and os.path.isdir(os.path.join(path, d))
+        )
+        for model_path in model_paths:
             models.append(directi.DIRECTi.load(model_path, _mode=mode))
         blast = cls(
             models, ref, ref.uns["distance_metric"], ref.uns["n_posterior"],
@@ -726,14 +729,15 @@ class BLAST(object):
         blast.empirical = [
             blast.ref.uns["empirical"][str(i)] for i in range(len(blast))
         ] if "empirical" in blast.ref.uns else None
-        for i in range(ref.shape[0]):
-            if str(i) in blast.ref.uns["posterior"]:
-                blast.posterior[i] = blast.ref.uns["posterior"][str(i)]
+        if "posterior" in blast.ref.uns:
+            for i in range(ref.shape[0]):
+                if str(i) in blast.ref.uns["posterior"]:
+                    blast.posterior[i] = blast.ref.uns["posterior"][str(i)]
         blast._force_components(**kwargs)
         return blast
 
     def query(
-            self, query: data.ExprDataSet, n_neighbors: int = 5,
+            self, query: anndata.AnnData, n_neighbors: int = 5,
             store_dataset: bool = False,
             n_jobs: int = config._USE_GLOBAL,
             random_seed: int = config._USE_GLOBAL
@@ -804,7 +808,7 @@ class BLAST(object):
         else:
             utils.logger.info("Computing posterior distribution distances...")
             query_posterior = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="threading"
+                n_jobs=min(n_jobs, len(self)), backend="loky"
             )(joblib.delayed(model.inference)(
                 query, n_posterior=self.n_posterior, random_seed=random_seed
             ) for model in self.models), axis=1)  # n_cells * n_models * n_posterior_samples * latent_dim
@@ -831,8 +835,8 @@ class BLAST(object):
 
         return Hits(
             self, hits, dist, pval,
-            query if store_dataset else data.ExprDataSet(
-                scipy.sparse.csr_matrix((query.shape[0], 0)),
+            query if store_dataset else anndata.AnnData(
+                X=scipy.sparse.csr_matrix((query.shape[0], 0)),
                 obs=pd.DataFrame(index=query.obs.index),
                 var=pd.DataFrame(), uns={}
             )
@@ -840,7 +844,7 @@ class BLAST(object):
 
     def align(
             self, query: typing.Union[
-                data.ExprDataSet, typing.Mapping[str, data.ExprDataSet]
+                anndata.AnnData, typing.Mapping[str, anndata.AnnData]
             ], n_jobs: int = config._USE_GLOBAL,
             random_seed: int = config._USE_GLOBAL,
             path: typing.Optional[str] = None, **kwargs
@@ -900,8 +904,8 @@ class Hits(object):
 
     Parameters
     ----------
-    ref
-        The reference dataset.
+    blast
+        The :class:`BLAST` object producing the hits
     hits
         Indices of hit cell in the reference dataset.
         Each list element contains hit cell indices for a query cell.
@@ -917,8 +921,8 @@ class Hits(object):
         Each list element is a :math:`n\_hits \times n\_models` matrix,
         with matrix entries corresponding to the empirical p-value of
         each hit cell under each model.
-    names
-        Query cell names.
+    query
+        Query dataset
     """
 
     FILTER_BY_DIST = 0
@@ -929,12 +933,12 @@ class Hits(object):
             hits: typing.List[np.ndarray],
             dist: typing.List[np.ndarray],
             pval: typing.List[np.ndarray],
-            query: data.ExprDataSet
+            query: anndata.AnnData
     ) -> None:
         self.blast = blast
-        self.hits = np.array(hits)
-        self.dist = np.array(dist)
-        self.pval = np.array(pval)
+        self.hits = np.asarray(hits, dtype=object)
+        self.dist = np.asarray(dist, dtype=object)
+        self.pval = np.asarray(pval, dtype=object)
         self.query = query
         if not self.hits.shape[0] == self.dist.shape[0] == \
                 self.pval.shape[0] == self.query.shape[0]:
@@ -1090,15 +1094,11 @@ class Hits(object):
         r"""
         Annotate query cells based on existing annotations of hit cells
         via majority voting.
-        Fields in the meta data or gene expression values can all be specified
-        for annotation / prediction. Note that for gene expression, predicted
-        values are in log-scale, and user should do proper normalization
-        of the reference data in advance.
 
         Parameters
         ----------
         field
-            Specifies a meta column or gene name to use for annotation.
+            Specifies a meta column in `anndata.AnnData.obs`.
         min_hits
             Minimal number of hits required for annotating a query cell,
             otherwise the query cell will be rejected.
@@ -1120,16 +1120,14 @@ class Hits(object):
             the number of hits, as well as the majority fraction (only for
             categorical annotations) for each query cell.
         """
-        ref = self.blast.ref.get_meta_or_var(
-            [field], normalize_var=False, log_var=True
-        ).values.ravel()
+        ref = self.blast.ref.obs[field].to_numpy().ravel()
         n_hits = np.repeat(0, len(self.hits))
         if np.issubdtype(ref.dtype.type, np.character) or \
                 np.issubdtype(ref.dtype.type, np.object_):
             prediction = np.repeat("rejected", len(self.hits)).astype(object)
             majority_frac = np.repeat(np.nan, len(self.hits))
             for i, _hits in enumerate(self.hits):
-                hits = ref[_hits]
+                hits = ref[_hits.astype(int)]
                 hits = hits[~utils.isnan(hits)] if hits.size else hits
                 n_hits[i] = hits.size
                 if n_hits[i] < min_hits:
@@ -1145,7 +1143,7 @@ class Hits(object):
         elif np.issubdtype(ref.dtype.type, np.number):
             prediction = np.repeat(np.nan, len(self.hits))
             for i, _hits in enumerate(self.hits):
-                hits = ref[_hits]
+                hits = ref[_hits.astype(int)]
                 hits = hits[~utils.isnan(hits)] if hits.size else hits
                 n_hits[i] = hits.size
                 if n_hits[i] < min_hits:
@@ -1196,9 +1194,9 @@ class Hits(object):
         if self.dist[0].ndim != 1 or self.pval[0].ndim != 1:
             raise RuntimeError("Please call `reconcile_models` first!")
         prediction = np.repeat("rejected", len(self.hits)).astype(object)
-        ref = self.blast.ref.get_meta_or_var([cl_field]).values.ravel()
+        ref = self.blast.ref.obs[cl_field].to_numpy().ravel()
         for i, (_hits, _pval) in enumerate(zip(self.hits, self.pval)):
-            hits = ref[_hits]
+            hits = ref[_hits.astype(int)]
             if hits.size:
                 mask = ~utils.isnan(hits)
                 hits = hits[mask]
@@ -1363,7 +1361,7 @@ def sankey(
         Figure object fed to `iplot` of the `plotly` module to produce the plot.
     """
     cf = metrics.confusion_matrix(query, ref)
-    cf["query"] = cf.index.values
+    cf["query"] = cf.index.to_numpy()
     cf = cf.melt(
         id_vars=["query"], var_name="reference", value_name="count"
     ).sort_values(by="count")

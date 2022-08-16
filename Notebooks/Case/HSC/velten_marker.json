@@ -1,9 +1,0 @@
-{
-    "E": ["CA1", "HBB", "LMNA", "AHSP", "KLF1", "GATA1", "NFIA", "HES6", "E2F4"],
-    "Ba": ["CLC", "HDC", "PRG2", "LMO4", "GATA2", "NR4A3"],
-    "Meg": ["GP1BB", "PLEK", "ITGA2B", "GATA2", "PBX1", "MEIS1"],
-    "Ly": ["DNTT", "VPREB1", "HHIP", "JCHAIN", "CD79A", "EBF1", "ID3", "ATF3", "SATB1"],
-    "M/D": ["SCT", "TGFBI", "LGMN", "IRF8", "IRF7", "TCF4"],
-    "G": ["CTSG", "AZU1", "ELANE", "CEBPD", "CEBPA", "CEBPE"],
-    "HSC": ["HOXA3", "PRDM16", "HOXB6", "HLF", "ZFP36L2"]
-}

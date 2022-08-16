@@ -1,8 +1,0 @@
-dataset_name,organism,organ,lifestage,platform,cell number,publication,CL,remark,collect
-Ariss,Drosophila melanogaster,Eye disc,Third instar larva stage,Drop-seq,15548,Single cell RNA-sequencing identifies a metabolic aspect of apoptosis in Rbf mutant,TRUE,wt and rbf mutation,collect_ariss.R
-Cao_2019,Mus musculus,Embryo,9.5-13.5days,sci-RNA-seq3,1920648,The single-cell transcriptional landscape of mammalian organogenesis,TRUE,error:Without selecting scmap genes,collect_cao_2019.R
-Green,Mus musculus,Spermatogenesis,Adult,Drop-seq,34632,A Comprehensive Roadmap of Murine Spermatogenesis Defined by Single-Cell RNA-Seq,TRUE,,collect_green.R
-Burns,Mus musculus,Inner ear,New born,Illumina HiSeq 1000,156,Single-cell RNA-Seq resolves cellular complexity in sensory organs from the neonatal inner ear,TRUE,,collect_burns.R
-Wagner,Danio rerio,Embryo,Embryo,Illumina NextSeq 500,36728,Single-cell mapping of gene expression landscapes and lineage in the zebrafish embryo,TRUE,,collect_wagner.R
-Meredith,Mus musculus,Thymus,5 weeks,Illumina HiSeq 2500,100,Aire controls gene expression in the thymic epithelium with ordered stochasticity,TRUE,,collect_meredith.R
-Hochane,Homo sapiens,Kidney,9-18 week fetal,10x,14606,Single-cell transcriptomics reveals gene expression dynamics of human fetal kidney development.,TRUE,,colllect_hochane.R

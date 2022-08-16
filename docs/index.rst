@@ -26,6 +26,7 @@ Contents
    install
    start
    api
+   migration
 
 
 Indices and tables
@@ -38,4 +39,4 @@ Indices and tables
 
 Publication
 ===========
-`Cell BLAST: Searching large-scale scRNA-seq databases via unbiased cell embedding <https://www.biorxiv.org/content/10.1101/587360v2/>`_
+`Searching large-scale scRNA-seq databases via unbiased cell embedding with Cell BLAST <https://www.nature.com/articles/s41467-020-17281-7>`_

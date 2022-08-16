@@ -4,6 +4,7 @@ import sys
 import os
 import shutil
 import unittest
+import anndata
 
 sys.path.insert(0, "..")
 import Cell_BLAST as cb
@@ -16,9 +17,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 class DirectiTest(unittest.TestCase):
 
     def setUp(self):
-        self.data = cb.data.ExprDataSet.read_dataset(
-            "pollen.h5"
-        ).normalize()
+        self.data = anndata.read_h5ad("pollen.h5ad")
+        cb.data.normalize(self.data)
 
     def tearDown(self):
         if os.path.exists("./test_directi"):
@@ -30,7 +30,7 @@ class DirectiTest(unittest.TestCase):
             latent_dim=10, epoch=3, path="./test_directi"
         )
         latent = model.inference(self.data)
-        cb.data.write_hybrid_path(latent, "./regression_test/gau.h5//latent")
+        cb.utils.write_hybrid_path(latent, "./regression_test/gau.h5//latent")
 
     def test_catgau(self):
         model = cb.directi.fit_DIRECTi(
@@ -38,20 +38,22 @@ class DirectiTest(unittest.TestCase):
             latent_dim=10, cat_dim=10, epoch=3, path="./test_directi"
         )
         latent = model.inference(self.data)
-        cb.data.write_hybrid_path(latent, "./regression_test/catgau.h5//latent")
+        cb.utils.write_hybrid_path(latent, "./regression_test/catgau.h5//latent")
 
     def test_semisupervised_catgau(self):
+        '''
         self.data.obs.loc[
-            self.data.annotation_confidence("cell_type1")[1] <= 0.5,
+            cb.data.annotation_confidence(self.data, "cell_type1")[1] <= 0.5,
             "cell_type1"
         ] = ""
+        '''
         model = cb.directi.fit_DIRECTi(
             self.data, genes=self.data.uns["scmap_genes"],
             latent_dim=10, supervision="cell_type1",
             epoch=3, path="./test_directi"
         )
         latent = model.inference(self.data)
-        cb.data.write_hybrid_path(latent, "./regression_test/semisupervised_catgau.h5//latent")
+        cb.utils.write_hybrid_path(latent, "./regression_test/semisupervised_catgau.h5//latent")
 
     def test_rmbatch(self):
         model = cb.directi.fit_DIRECTi(
@@ -60,7 +62,7 @@ class DirectiTest(unittest.TestCase):
             epoch=3, path="./test_directi"
         )
         latent = model.inference(self.data)
-        cb.data.write_hybrid_path(latent, "./regression_test/rmbatch.h5//latent")
+        cb.utils.write_hybrid_path(latent, "./regression_test/rmbatch.h5//latent")
 
 
 if __name__ == "__main__":

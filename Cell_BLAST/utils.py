@@ -15,10 +15,11 @@ import re
 import igraph
 import numpy as np
 import scipy.sparse
-import sklearn.neighbors
+import h5py
 import tqdm
-
-from . import data
+import tqdm.notebook
+import torch
+import pynvml
 
 
 log_handler = logging.StreamHandler()
@@ -27,7 +28,6 @@ log_handler.setFormatter(logging.Formatter(fmt="[%(levelname)s] %(name)s: %(mess
 logger = logging.getLogger("Cell BLAST")
 logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
-
 
 def rand_hex() -> str:
     return binascii.b2a_hex(os.urandom(15)).decode()
@@ -58,7 +58,7 @@ def in_ipynb() -> bool:  # pragma: no cover
 
 def smart_tqdm():  # pragma: no cover
     if in_ipynb():
-        return tqdm.tqdm_notebook
+        return tqdm.notebook.tqdm
     return tqdm.tqdm
 
 
@@ -368,127 +368,6 @@ def empty_safe(fn: typing.Callable, dtype: type):
     return _fn
 
 
-def subsample_molecules(
-        ds: data.ExprDataSet, ratio: float = 0.9, random_seed: int = 0
-) -> data.ExprDataSet:
-    r"""
-    Subsample molecules
-
-    Parameters
-    ----------
-    ds
-        Dataset to be subsampled.
-    ratio
-        Subsample ratio.
-    random_seed
-        Random seed.
-
-    Returns
-    -------
-    subsampled
-        Subsampled dataset
-    """
-    random_state = np.random.RandomState(seed=random_seed)
-    ds = ds.copy()  # Shallow
-    x = ds.exprs.copy()  # Deep
-    if not np.issubdtype(x.dtype.type, np.integer):
-        x_int = np.round(x).astype(int)
-        if np.abs(x - x_int).max() > 1e-8:
-            logger.warning("Input not integer! Rounding to nearest integer.")
-        x = x_int
-    if scipy.sparse.issparse(x):
-        x.data = random_state.binomial(x.data, ratio)
-        x.eliminate_zeros()
-    ds.exprs = x
-    return ds
-
-
-def split_molecules(
-        ds: data.ExprDataSet, val_split: float = 0.1, random_seed: int = 0
-) -> typing.Tuple[data.ExprDataSet, data.ExprDataSet]:
-    r"""
-    Molecular split (only disjoint split, i.e. no overlap between splits).
-
-    Parameters
-    ----------
-    ds
-        Dataset to be splitted.
-    val_split
-        Ratio of validation set.
-    random_seed
-        Random seed.
-
-    Returns
-    -------
-    train
-        Training dataset
-    val
-        Validation dataset
-    """
-    train_ds = subsample_molecules(ds, 1 - val_split, random_seed=random_seed)
-    val_ds = ds.copy()
-    val_ds.exprs = np.round(ds.exprs).astype(int) - train_ds.exprs
-    if scipy.sparse.issparse(val_ds.exprs):
-        val_ds.exprs.eliminate_zeros()
-    return train_ds, val_ds
-
-
-def neighbor_stability(
-        ds: data.ExprDataSet,
-        metric: str = "minkowski", k: typing.Union[int, float] = 0.01,
-        used_genes: typing.Optional[typing.List[str]] = None, n_jobs: int = 1,
-        subsample_ratio: float = 0.8, n_repeats: int = 5, random_seed: int = 0
-) -> scipy.sparse.csr_matrix:
-    r"""
-    Get original space nearest neighbor stability across molecular subsampling.
-
-    Parameters
-    ----------
-    ds
-        Dataset being considered
-    k
-        Number (if k is an integer greater than 1) or fraction in total data
-        (if k is a float less than 1) of nearest neighbors to consider.
-    metric
-        Distance metric to be used.
-        See :class:`sklearn.neighbors.NearestNeighbors` for available options.
-    used_genes
-        A subset of genes to be used when computing distance.
-    n_jobs
-        Number of parallel jobs to use when doing nearest neighbor search.
-        See :class:`sklearn.neighbors.NearestNeighbors` for details.
-    subsample_ratio
-        Subsample ratio.
-    n_repeats
-        Number of subsample repeats.
-    random_seed
-        Random seed.
-
-    Returns
-    -------
-    nng
-        Stable nearest neighbor graph
-    """
-    n = ds.shape[0]
-    k = n * k if k < 1 else k
-    k = np.round(k).astype(np.int)
-    nng = scipy.sparse.csr_matrix((n, n))
-    for i in range(n_repeats):
-        subsample = subsample_molecules(
-            ds, ratio=subsample_ratio, random_seed=random_seed + i
-        )
-        subsample = subsample.normalize()
-        subsample.exprs = np.log1p(subsample.exprs)
-        if used_genes is not None:
-            subsample = subsample[:, used_genes]
-        subsample = subsample.exprs.toarray()
-        nn = sklearn.neighbors.NearestNeighbors(
-            n_neighbors=min(n, k + 1), metric=metric, n_jobs=n_jobs
-        ).fit(subsample)
-        nng += nn.kneighbors_graph(subsample) - scipy.sparse.eye(n)
-    return nng / n_repeats
-
-
 def scope_free(x: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.\\-]", "_", x)
 
@@ -506,3 +385,61 @@ encode = empty_safe(np.vectorize(lambda _x: str(_x).encode("utf-8")), "S")
 upper = empty_safe(np.vectorize(lambda x: str(x).upper()), str)
 lower = empty_safe(np.vectorize(lambda x: str(x).lower()), str)
 tostr = empty_safe(np.vectorize(str), str)
+
+def read_hybrid_path(hybrid_path: str) -> np.ndarray:
+    file_name, h5_path = hybrid_path.split("//")
+    with h5py.File(file_name, "r") as f:
+        obj = f[h5_path][...]
+    if obj.dtype.type is np.bytes_:
+        obj = decode(obj)
+    return obj
+
+
+def write_hybrid_path(obj: np.ndarray, hybrid_path: str) -> None:
+    file_name, h5_path = hybrid_path.split("//")
+    if not os.path.exists(os.path.dirname(file_name)):
+        os.makedirs(os.path.dirname(file_name))
+    with h5py.File(file_name, "a") as f:
+        if h5_path in f:
+            del f[h5_path]
+        if obj.dtype.type in (np.str_, np.object_):
+            obj = encode(obj)
+        f.create_dataset(h5_path, data=obj)
+
+def dataframe2list(dataframe):
+    identical = []
+    for i in zip(dataframe.iloc[:, 0], dataframe.iloc[:, 1]):
+        identical.append(i)
+    return identical
+
+
+@functools.lru_cache(maxsize=1)
+def autodevice() -> torch.device:
+    r"""
+    Get torch computation device automatically
+    based on GPU availability and memory usage
+
+    Returns
+    -------
+    device
+        Computation device
+    """
+    used_device = -1
+    try:
+        pynvml.nvmlInit()
+        free_mems = np.array([
+            pynvml.nvmlDeviceGetMemoryInfo(
+                pynvml.nvmlDeviceGetHandleByIndex(i)
+            ).free for i in range(pynvml.nvmlDeviceGetCount())
+        ])
+        if free_mems.size:
+            best_devices = np.where(free_mems == free_mems.max())[0]
+            used_device = np.random.choice(best_devices, 1)[0]
+    except pynvml.NVMLError:
+        pass
+    if used_device == -1:
+        logger.info("Using CPU as computation device.")
+        return torch.device("cpu")
+    logger.info("Using GPU %d as computation device.", used_device)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(used_device)
+    return torch.device("cuda")

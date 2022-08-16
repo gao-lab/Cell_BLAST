@@ -12,27 +12,26 @@ https://conda.io/docs/user-guide/tasks/manage-environments.html.
 For conda, here's a one-liner to set up an empty environment
 for installing Cell BLAST:
 
-``conda create -n cb python=3.6 && source activate cb``
+.. code-block:: bash
+   :linenos:
 
-Now follow the instructions below to install Cell BLAST:
+   conda create -n cb python=3.9 && source activate cb
 
-1. Make sure you have a working version of tensorflow or tensorflow-gpu
-   (version >= 1.5). You can follow the instructions on
-   https://www.tensorflow.org/install/ about how to install tensorflow
-   (and dependencies like CUDA and CuDNN for the GPU version), or just install
-   via anaconda, which handles dependencies automatically:
+Then follow the instructions below to install Cell BLAST:
 
-   For installing the GPU supported version:
-   ``conda install tensorflow-gpu=1.8``
+1. Install Cell BLAST by running:
 
-   For installing the CPU only version:
-   ``conda install tensorflow=1.8``
+   .. code-block:: bash
+      :linenos:
 
-2. Install Cell BLAST by running:
-   ``pip install Cell-BLAST``.
+      pip install Cell-BLAST
 
-3. Check if the package can be imported in python interpreter:
-   ``import Cell_BLAST as cb``
+2. Check if the package can be imported in Python interpreter:
+
+   .. code-block:: python
+      :linenos:
+
+      import Cell_BLAST as cb
 
 And you are good to go.
 
