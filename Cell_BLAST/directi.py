@@ -796,13 +796,11 @@ def fit_DIRECTi(
     assert isinstance(batch_effect, list)
     for _batch_effect in batch_effect:
         data_dict[_batch_effect] = utils.encode_onehot(
-            adata.obs[_batch_effect].astype(object).fillna("IgNoRe"),
-            sort=True, ignore="IgNoRe"
+            adata.obs[_batch_effect], sort=True
         )  # sorting ensures batch order reproducibility for later tuning
     if supervision is not None:
         data_dict[supervision] = utils.encode_onehot(
-            adata.obs[supervision].astype(object).fillna("IgNoRe"),
-            sort=True, ignore="IgNoRe"
+            adata.obs[supervision], sort=True
         )  # sorting ensures supervision order reproducibility for later tuning
         if cat_dim is None:
             cat_dim = data_dict[supervision].shape[1]
@@ -1066,13 +1064,11 @@ def align_DIRECTi(
     )
     for rmbatch_module in aligned_model.rmbatch_modules:
         data_dict[rmbatch_module.name] = utils.encode_onehot(
-            adata.obs[rmbatch_module.name].astype(object).fillna("IgNoRe"),
-            sort=True, ignore="IgNoRe"
+            adata.obs[rmbatch_module.name], sort=True
         )
     if isinstance(aligned_model.latent_module, latent.SemiSupervisedCatGau):
         data_dict[supervision] = utils.encode_onehot(
-            adata.obs[supervision].astype(object).fillna("IgNoRe"),
-            sort=True, ignore="IgNoRe"
+            adata.obs[supervision], sort=True
         )
         cat_dim = aligned_model.latent_module.cat_dim
         if cat_dim > data_dict[supervision].shape[1]:

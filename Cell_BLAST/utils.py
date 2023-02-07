@@ -14,6 +14,7 @@ import re
 
 import igraph
 import numpy as np
+import pandas as pd
 import scipy.sparse
 import h5py
 import tqdm
@@ -100,26 +101,21 @@ def minibatch(batch_size: int, desc: str, use_last: bool = False, progress_bar: 
 def encode_integer(
         label: typing.List[typing.Any], sort: bool = False
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
-    label = np.array(label).ravel()
-    classes = np.unique(label)
+    index = pd.Index(label).dropna().drop_duplicates()
     if sort:
-        classes.sort()
-    mapping = {v: i for i, v in enumerate(classes)}
-    return np.array([mapping[v] for v in label]), classes
+        index = index.sort_values()
+    return index.get_indexer(label), index.to_numpy()
 
 
 # Avoid sklearn warning
 def encode_onehot(
-        label: typing.List[typing.Any], sort: bool = False,
-        ignore: typing.Optional[typing.Any] = None
+        label: typing.List[typing.Any], sort: bool = False
 ) -> scipy.sparse.csr_matrix:
     i, c = encode_integer(label, sort)
-    onehot = scipy.sparse.csc_matrix((
-        np.ones_like(i, dtype=np.int32), (np.arange(i.size), i)
-    ))
-    if ignore is None:
-        ignore = []
-    return onehot[:, ~np.in1d(c, ignore)].tocsr()
+    val = np.ones_like(i, dtype=np.int32)[i >= 0]
+    row = np.arange(i.size)[i >= 0]
+    col = i[i >= 0]
+    return scipy.sparse.csr_matrix((val, (row, col)), shape=(i.size, c.size))
 
 
 class CellTypeDAG(object):

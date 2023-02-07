@@ -27,7 +27,7 @@ def calc_weights(adata: ad.AnnData,
                 clustering_space: str,
                 similarity_space: str,
                 random_seed: int) -> None:
-    
+
     r"""
     Calculate the proper weight of each cell for adversarial batch alignment.
 
@@ -46,15 +46,13 @@ def calc_weights(adata: ad.AnnData,
     random_seed
         Random seed. If not specified, :data:`config.RANDOM_SEED`
         will be used, which defaults to 0.
-    
+
     Returns
     -------
     data_dict
         A :class:`utils.Datadict` object with weight information added
     """
 
-    
-    
     if any(add_weight):
         utils.logger.info('Calculating weights...')
     start_time = time.time()
@@ -67,17 +65,16 @@ def calc_weights(adata: ad.AnnData,
                     clustering_latent = get_default_clustering_space(adata, genes, _batch_effect, random_seed)
                 else:
                     clustering_latent = adata.obsm[clustering_space]
-                
+
                 if similarity_space is None:
                     similarity_latent = get_default_similarity_space(adata, genes, _batch_effect, random_seed)
                 else:
                     similarity_latent = adata.obsm[similarity_space]
-            
+
             weight_full = np.zeros(adata.n_obs, dtype = np.float32)
 
             batch = utils.densify(utils.encode_onehot(
-                adata.obs[_batch_effect].astype(object).fillna("IgNoRe"),
-                sort=True, ignore="IgNoRe"
+                adata.obs[_batch_effect], sort=True
             ))
             num_batch = batch.shape[1]
             mask = batch.sum(axis = 1) > 0
@@ -89,7 +86,7 @@ def calc_weights(adata: ad.AnnData,
             if config.SUPERVISION is not None:
 
                 all_labels = adata.obs[config.SUPERVISION][mask]
-                
+
                 cluster, sum_cluster, num_clusters = \
                     get_supervised_cluster(all_labels, batch, num_batch)
                 adata.uns[config._WEIGHT_PREFIX_ + _batch_effect + '_cluster'] = cluster
@@ -98,13 +95,13 @@ def calc_weights(adata: ad.AnnData,
 
                 volume = get_volume(batch, num_batch, cluster, sum_cluster, num_clusters)
                 adata.uns[config._WEIGHT_PREFIX_ + _batch_effect + '_volume'] = volume
-                
+
                 similarity = \
                     get_supervised_similarity(all_labels, cluster, sum_cluster)
                 adata.uns[config._WEIGHT_PREFIX_ + _batch_effect + '_raw_similarity'] = similarity
-            
+
             else: #supervision is None
-                
+
                 cluster, sum_cluster, num_clusters = \
                     get_unsupervised_cluster(clustering_latent[mask], batch, num_batch, random_seed)
                 adata.uns[config._WEIGHT_PREFIX_ + _batch_effect + '_cluster'] = cluster
@@ -124,7 +121,6 @@ def calc_weights(adata: ad.AnnData,
 
             weight_full[mask] = weight
 
-            
             report = f"[batch effect \"{_batch_effect}\"] "
             report += f"time elapsed={time.time() - start_time:.1f}s"
             print(report)
@@ -133,9 +129,6 @@ def calc_weights(adata: ad.AnnData,
             weight_full = np.ones(adata.n_obs, dtype = np.float32)
 
         adata.obs[config._WEIGHT_PREFIX_ + _batch_effect] = weight_full
-
-        
-
 
 
 def get_supervised_cluster(all_labels: typing.List[str],
@@ -159,19 +152,19 @@ def get_supervised_cluster(all_labels: typing.List[str],
             cluster[batch == i] += sum_cluster
             sum_cluster = cluster[batch == i].max() + 1
             num_clusters.append(sum_cluster)
-    
+
     return cluster, sum_cluster, num_clusters
 
 def get_supervised_similarity(all_labels: typing.List[str],
                             cluster: np.ndarray,
                             sum_cluster: int) -> np.ndarray:
-    
+
     similarity = np.zeros((sum_cluster, sum_cluster))
     for i in range(sum_cluster):
         for j in range(sum_cluster):
             if list(all_labels[cluster == i])[0] == list(all_labels[cluster == j])[0]:
                 similarity[i, j] = 1
-    
+
     return similarity
 
 def get_unsupervised_cluster(clustering_latent: np.ndarray,
@@ -197,7 +190,7 @@ def get_unsupervised_cluster(clustering_latent: np.ndarray,
             cluster[batch == i] += sum_cluster
             sum_cluster = cluster[batch == i].max() + 1
             num_clusters.append(sum_cluster)
-    
+
     return cluster, sum_cluster, num_clusters
 
 def get_volume(batch: np.ndarray,
@@ -210,7 +203,7 @@ def get_volume(batch: np.ndarray,
     for i in range(num_batch):
         for j in range(num_clusters[i], num_clusters[i+1]):
             volume[j] = (cluster == j).sum() / (batch == i).sum()
-    
+
     return volume
 
 def get_unsupervised_similarity(similarity_latent: np.ndarray,
@@ -222,9 +215,9 @@ def get_unsupervised_similarity(similarity_latent: np.ndarray,
     center = np.zeros((sum_cluster, similarity_latent.shape[1]))
     for i in range(sum_cluster):
         center[i] = similarity_latent[cluster == i].mean(axis = 0)
-    
+
     raw_similarity = -pairwise_distances(center, metric = config.METRIC, **config.METRIC_KWARGS)
-    
+
     if config.MNN:
         raw_similarity = get_MNN(num_batch, cluster, sum_cluster, num_clusters, raw_similarity)
     else:
@@ -232,8 +225,8 @@ def get_unsupervised_similarity(similarity_latent: np.ndarray,
         raw_similarity[raw_similarity < 0] = 0
 
     similarity = raw_similarity.copy()
-    for i in range(sum_cluster):  
-        similarity[:, i] *= volume  
+    for i in range(sum_cluster):
+        similarity[:, i] *= volume
         for j in range(num_batch):
             curr_sum = similarity[num_clusters[j]:num_clusters[j+1], i].sum()
             if curr_sum > 0:
@@ -248,7 +241,7 @@ def get_weight(batch: np.ndarray,
                 num_clusters: typing.List[int],
                 volume: np.ndarray,
                 similarity: np.ndarray) -> np.ndarray:
-        
+
     weight = np.ones(batch.shape[0])
     for i in range(sum_cluster):
         vv = volume * (similarity[i, :])
@@ -260,7 +253,7 @@ def get_weight(batch: np.ndarray,
         ww = ((ww ** 0.5).sum() ** 2 - ww.sum()) / num_batch / (num_batch - 1)
         ww = ww / volume[i]
         weight[cluster == i] = ww
-    
+
     weight = weight / weight.mean()
 
     return weight
@@ -313,7 +306,7 @@ def plot_similarity_confidence(adata: ad.AnnData,
                         mask[i][j] = -1.0
                     else:
                         mask[i][j] = 1.0
-    
+
     print('truth')
     plt.figure(figsize=(7,7))
     sns.heatmap(data = truth * mask)
@@ -336,7 +329,7 @@ def plot_similarity_confidence(adata: ad.AnnData,
 
 def plot_performance(adata: ad.AnnData,
                     target: str) -> None:
-    
+
     with rc_context({'figure.figsize': (7, 7)}):
         sc.pl.umap(adata, color = target)
 
@@ -354,14 +347,14 @@ def plot_strategy(adata: ad.AnnData,
         adata.obs[target] = np.log1p(adata.obs[target])
     with rc_context({'figure.figsize': (7, 7)}):
         sc.pl.umap(adata, color = target)
-    
-    
+
+
 
 def get_default_clustering_space(adata: ad.AnnData,
                                 genes: typing.List[str],
                                 batch_effect: str,
                                 random_seed: int) -> np.ndarray:
-    
+
     adata = data.select_vars(adata, genes)
     x = np.zeros((adata.obs.shape[0], config.PCA_N_COMPONENTS))
     for batch in adata.obs[batch_effect].unique():
@@ -381,7 +374,7 @@ def get_default_similarity_space(adata: ad.AnnData,
 
     adata = data.select_vars(adata, genes)
     data.normalize(adata)
-    
+
     return np.log1p(adata.X)
 
 def get_MNN(num_batch: int,
@@ -389,7 +382,7 @@ def get_MNN(num_batch: int,
             sum_cluster: int,
             num_clusters: typing.List[int],
             raw_similarity: np.ndarray) -> np.ndarray:
-    
+
     similarity = raw_similarity.copy()
     for i in range(num_batch):
         for j in range(num_batch):

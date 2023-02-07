@@ -570,7 +570,7 @@ class BLAST(object):
             if not self.cluster_empirical:
                 self.cluster = np.zeros((
                     self.ref.shape[0], len(self)
-                ), dtype=np.int)
+                ), dtype=int)
             latent = self._get_latent(n_jobs)
             cluster = self._get_cluster(n_jobs)
             rs = np.random.RandomState(random_seed)
