@@ -5,9 +5,10 @@ Cell BLAST based on DIRECTi models
 import collections
 import os
 import re
-import typing
 import tempfile
+import typing
 
+import anndata
 import joblib
 import numba
 import numpy as np
@@ -15,7 +16,6 @@ import pandas as pd
 import scipy.sparse
 import scipy.stats
 import sklearn.neighbors
-import anndata
 
 from . import config, data, directi, metrics, utils
 
@@ -29,8 +29,8 @@ def _wasserstein_distance_impl(x: np.ndarray, y: np.ndarray):  # pragma: no cove
     xy = np.concatenate((x, y))
     xy.sort()
     deltas = np.diff(xy)
-    x_cdf = np.searchsorted(x[x_sorter], xy[:-1], 'right') / x.size
-    y_cdf = np.searchsorted(y[y_sorter], xy[:-1], 'right') / y.size
+    x_cdf = np.searchsorted(x[x_sorter], xy[:-1], "right") / x.size
+    y_cdf = np.searchsorted(y[y_sorter], xy[:-1], "right") / y.size
     return np.sum(np.multiply(np.abs(x_cdf - y_cdf), deltas))
 
 
@@ -46,14 +46,16 @@ def _energy_distance_impl(x: np.ndarray, y: np.ndarray):  # pragma: no cover
 
 
 @numba.extending.overload(
-    scipy.stats.wasserstein_distance, jit_options={"nogil": True, "cache": True})
+    scipy.stats.wasserstein_distance, jit_options={"nogil": True, "cache": True}
+)
 def _wasserstein_distance(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     if x == numba.float32[::1] and y == numba.float32[::1]:
         return _wasserstein_distance_impl
 
 
 @numba.extending.overload(
-    scipy.stats.energy_distance, jit_options={"nogil": True, "cache": True})
+    scipy.stats.energy_distance, jit_options={"nogil": True, "cache": True}
+)
 def _energy_distance(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     if x == numba.float32[::1] and y == numba.float32[::1]:
         return _energy_distance_impl
@@ -70,7 +72,7 @@ def ed(x: np.ndarray, y: np.ndarray):  # pragma: no cover
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _md(
-        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray
+    x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -87,8 +89,7 @@ def _md(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def md(
-        x: np.ndarray, y: np.ndarray,
-        x_posterior: np.ndarray, y_posterior: np.ndarray
+    x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray, y_posterior: np.ndarray
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -103,32 +104,37 @@ def md(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _compute_pcasd(
-        x: np.ndarray, x_posterior: np.ndarray, eps: float
+    x: np.ndarray, x_posterior: np.ndarray, eps: float
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
     x_posterior : n_posterior * latent_dim
     """
-    centered_x_posterior = x_posterior - np.sum(x_posterior, axis=0) / x_posterior.shape[0]
+    centered_x_posterior = (
+        x_posterior - np.sum(x_posterior, axis=0) / x_posterior.shape[0]
+    )
     cov_x = np.dot(centered_x_posterior.T, centered_x_posterior)
-    v = np.real(np.linalg.eig(cov_x.astype(np.complex64))[1])  # Suppress domain change due to rounding errors
+    v = np.real(
+        np.linalg.eig(cov_x.astype(np.complex64))[1]
+    )  # Suppress domain change due to rounding errors
     x_posterior = np.dot(x_posterior - x, v)
     squared_x_posterior = np.square(x_posterior)
     asd = np.empty((2, x_posterior.shape[1]), dtype=np.float32)
     for p in range(x_posterior.shape[1]):
         mask = x_posterior[:, p] < 0
-        asd[0, p] = np.sqrt((
-            np.sum(squared_x_posterior[mask, p])
-        ) / max(np.sum(mask), 1)) + eps
-        asd[1, p] = np.sqrt((
-            np.sum(squared_x_posterior[~mask, p])
-        ) / max(np.sum(~mask), 1)) + eps
+        asd[0, p] = (
+            np.sqrt((np.sum(squared_x_posterior[mask, p])) / max(np.sum(mask), 1)) + eps
+        )
+        asd[1, p] = (
+            np.sqrt((np.sum(squared_x_posterior[~mask, p])) / max(np.sum(~mask), 1))
+            + eps
+        )
     return np.concatenate((v, asd), axis=0)
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _compute_pcasd_across_models(
-        x: np.ndarray, x_posterior: np.ndarray, eps: float = 1e-1
+    x: np.ndarray, x_posterior: np.ndarray, eps: float = 1e-1
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : n_models * latent_dim
@@ -142,8 +148,11 @@ def _compute_pcasd_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _amd(
-        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray,
-        eps: float, x_is_pcasd: bool = False
+    x: np.ndarray,
+    y: np.ndarray,
+    x_posterior: np.ndarray,
+    eps: float,
+    x_is_pcasd: bool = False,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -167,9 +176,13 @@ def _amd(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def amd(
-        x: np.ndarray, y: np.ndarray,
-        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 1e-1,
-        x_is_pcasd: bool = False, y_is_pcasd: bool = False
+    x: np.ndarray,
+    y: np.ndarray,
+    x_posterior: np.ndarray,
+    y_posterior: np.ndarray,
+    eps: float = 1e-1,
+    x_is_pcasd: bool = False,
+    y_is_pcasd: bool = False,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -180,15 +193,18 @@ def amd(
     if np.all(x == y):
         return 0.0
     return 0.5 * (
-        _amd(x, y, x_posterior, eps, x_is_pcasd) +
-        _amd(y, x, y_posterior, eps, y_is_pcasd)
+        _amd(x, y, x_posterior, eps, x_is_pcasd)
+        + _amd(y, x, y_posterior, eps, y_is_pcasd)
     )
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def npd_v1(
-        x: np.ndarray, y: np.ndarray,
-        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 0.0
+    x: np.ndarray,
+    y: np.ndarray,
+    x_posterior: np.ndarray,
+    y_posterior: np.ndarray,
+    eps: float = 0.0,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -203,20 +219,25 @@ def npd_v1(
     x_posterior = np.sum(x_posterior * projection, axis=1)  # n_posterior_samples
     y_posterior = np.sum(y_posterior * projection, axis=1)  # n_posterior_samples
     xy_posterior = np.concatenate((x_posterior, y_posterior))
-    xy_posterior1 = (xy_posterior - np.mean(x_posterior)) / (np.std(x_posterior) + np.float32(eps))
-    xy_posterior2 = (xy_posterior - np.mean(y_posterior)) / (np.std(y_posterior) + np.float32(eps))
-    return 0.5 * (scipy.stats.wasserstein_distance(
-        xy_posterior1[:len(x_posterior)],
-        xy_posterior1[-len(y_posterior):]
-    ) + scipy.stats.wasserstein_distance(
-        xy_posterior2[:len(x_posterior)],
-        xy_posterior2[-len(y_posterior):]
-    ))
+    xy_posterior1 = (xy_posterior - np.mean(x_posterior)) / (
+        np.std(x_posterior) + np.float32(eps)
+    )
+    xy_posterior2 = (xy_posterior - np.mean(y_posterior)) / (
+        np.std(y_posterior) + np.float32(eps)
+    )
+    return 0.5 * (
+        scipy.stats.wasserstein_distance(
+            xy_posterior1[: len(x_posterior)], xy_posterior1[-len(y_posterior) :]
+        )
+        + scipy.stats.wasserstein_distance(
+            xy_posterior2[: len(x_posterior)], xy_posterior2[-len(y_posterior) :]
+        )
+    )
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _npd_v2(
-        x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray, eps: float
+    x: np.ndarray, y: np.ndarray, x_posterior: np.ndarray, eps: float
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -230,17 +251,17 @@ def _npd_v2(
     projected_noise = np.sum((x_posterior - x) * udev, axis=1)
     projected_y = np.sum((y - x) * udev)
     mask = (projected_noise * projected_y) >= 0
-    scaler = np.sqrt(
-        np.sum(np.square(projected_noise[mask])) /
-        max(np.sum(mask), 1)
-    )
+    scaler = np.sqrt(np.sum(np.square(projected_noise[mask])) / max(np.sum(mask), 1))
     return np.abs(projected_y) / (scaler + eps)
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def npd_v2(
-        x: np.ndarray, y: np.ndarray,
-        x_posterior: np.ndarray, y_posterior: np.ndarray, eps: float = 1e-1
+    x: np.ndarray,
+    y: np.ndarray,
+    x_posterior: np.ndarray,
+    y_posterior: np.ndarray,
+    eps: float = 1e-1,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     x : latent_dim
@@ -250,16 +271,12 @@ def npd_v2(
     """
     if np.all(x == y):
         return 0.0
-    return 0.5 * (
-        _npd_v2(x, y, x_posterior, eps) +
-        _npd_v2(y, x, y_posterior, eps)
-    )
+    return 0.5 * (_npd_v2(x, y, x_posterior, eps) + _npd_v2(y, x, y_posterior, eps))
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_ed_across_models(
-        query_latent: np.ndarray,
-        ref_latent: np.ndarray
+    query_latent: np.ndarray, ref_latent: np.ndarray
 ) -> np.ndarray:  # pragma: no cover
     r"""
     query_latent : n_models * latent_dim
@@ -277,8 +294,10 @@ def _hit_ed_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_md_across_models(
-        query_latent: np.ndarray, ref_latent: np.ndarray,
-        query_posterior: np.ndarray, ref_posterior: np.ndarray
+    query_latent: np.ndarray,
+    ref_latent: np.ndarray,
+    query_posterior: np.ndarray,
+    ref_posterior: np.ndarray,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     query_latent : n_models * latent_dim
@@ -300,8 +319,11 @@ def _hit_md_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_amd_across_models(
-        query_latent: np.ndarray, ref_latent: np.ndarray,
-        query_posterior: np.ndarray, ref_posterior: np.ndarray, eps: float = 1e-1
+    query_latent: np.ndarray,
+    ref_latent: np.ndarray,
+    query_posterior: np.ndarray,
+    ref_posterior: np.ndarray,
+    eps: float = 1e-1,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     query_latent : n_models * latent_dim
@@ -318,17 +340,24 @@ def _hit_amd_across_models(
             y = ref_latent[j, i, ...]  # latent_dim
             y_posterior = ref_posterior[j, i, ...]  # n_posterior * latent_dim
             dist[j, i] = amd(
-                x, y, x_posterior, y_posterior,
-                eps=eps, x_is_pcasd=False, y_is_pcasd=True
+                x,
+                y,
+                x_posterior,
+                y_posterior,
+                eps=eps,
+                x_is_pcasd=False,
+                y_is_pcasd=True,
             )
     return dist
 
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_npd_v1_across_models(
-        query_latent: np.ndarray, ref_latent: np.ndarray,
-        query_posterior: np.ndarray, ref_posterior: np.ndarray,
-        eps: float = 0.0
+    query_latent: np.ndarray,
+    ref_latent: np.ndarray,
+    query_posterior: np.ndarray,
+    ref_posterior: np.ndarray,
+    eps: float = 0.0,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     query_latent : n_models * latent_dim
@@ -350,9 +379,11 @@ def _hit_npd_v1_across_models(
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def _hit_npd_v2_across_models(
-        query_latent: np.ndarray, ref_latent: np.ndarray,
-        query_posterior: np.ndarray, ref_posterior: np.ndarray,
-        eps: float = 1e-1
+    query_latent: np.ndarray,
+    ref_latent: np.ndarray,
+    query_posterior: np.ndarray,
+    ref_posterior: np.ndarray,
+    eps: float = 1e-1,
 ) -> np.ndarray:  # pragma: no cover
     r"""
     query_latent : n_models * latent_dim
@@ -377,12 +408,11 @@ DISTANCE_METRIC_ACROSS_MODELS = {
     md: _hit_md_across_models,
     amd: _hit_amd_across_models,
     npd_v1: _hit_npd_v1_across_models,
-    npd_v2: _hit_npd_v2_across_models
+    npd_v2: _hit_npd_v2_across_models,
 }
 
 
 class BLAST(object):
-
     r"""
     Cell BLAST
 
@@ -446,11 +476,16 @@ class BLAST(object):
     """
 
     def __init__(
-            self, models: typing.List[directi.DIRECTi],
-            ref: anndata.AnnData, distance_metric: str = "npd_v1",
-            n_posterior: int = 50, n_empirical: int = 10000,
-            cluster_empirical: bool = False, eps: typing.Optional[float] = None,
-            force_components: bool = True, **kwargs
+        self,
+        models: typing.List[directi.DIRECTi],
+        ref: anndata.AnnData,
+        distance_metric: str = "npd_v1",
+        n_posterior: int = 50,
+        n_empirical: int = 10000,
+        cluster_empirical: bool = False,
+        eps: typing.Optional[float] = None,
+        force_components: bool = True,
+        **kwargs,
     ) -> None:
         self.models = models
         self.ref = anndata.AnnData(
@@ -463,8 +498,11 @@ class BLAST(object):
         self.posterior = np.array([None] * self.ref.shape[0])
         self.empirical = None
 
-        self.distance_metric = globals()[distance_metric] \
-            if isinstance(distance_metric, str) else distance_metric
+        self.distance_metric = (
+            globals()[distance_metric]
+            if isinstance(distance_metric, str)
+            else distance_metric
+        )
         self.n_posterior = n_posterior if self.distance_metric is not ed else 0
         self.n_empirical = n_empirical
         self.cluster_empirical = cluster_empirical
@@ -479,59 +517,75 @@ class BLAST(object):
     def __getitem__(self, s) -> "BLAST":
         blast = BLAST(
             np.array(self.models)[s].tolist(),
-            self.ref, self.distance_metric, self.n_posterior, self.n_empirical,
-            self.cluster_empirical, self.eps, force_components=False
+            self.ref,
+            self.distance_metric,
+            self.n_posterior,
+            self.n_empirical,
+            self.cluster_empirical,
+            self.eps,
+            force_components=False,
         )
         blast.latent = self.latent[:, s, ...] if self.latent is not None else None
         blast.cluster = self.cluster[:, s, ...] if self.cluster is not None else None
-        blast.nearest_neighbors = np.array(self.nearest_neighbors)[s].tolist() \
-            if self.nearest_neighbors is not None else None
+        blast.nearest_neighbors = (
+            np.array(self.nearest_neighbors)[s].tolist()
+            if self.nearest_neighbors is not None
+            else None
+        )
         if self.posterior is not None:
             for i in range(self.posterior.size):
                 if self.posterior[i] is not None:
                     blast.posterior[i] = self.posterior[i][s, ...]
-        blast.empirical = [
-            item for item in np.array(self.empirical)[s]
-        ] if self.empirical is not None else None
+        blast.empirical = (
+            [item for item in np.array(self.empirical)[s]]
+            if self.empirical is not None
+            else None
+        )
         return blast
 
     def _get_latent(self, n_jobs: int) -> np.ndarray:  # n_cells * n_models * latent_dim
         if self.latent is None:
             utils.logger.info("Projecting to latent space...")
-            self.latent = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="threading"
-            )(joblib.delayed(model.inference)(
-                self.ref
-            ) for model in self.models), axis=1)
+            self.latent = np.stack(
+                joblib.Parallel(n_jobs=min(n_jobs, len(self)), backend="threading")(
+                    joblib.delayed(model.inference)(self.ref) for model in self.models
+                ),
+                axis=1,
+            )
         return self.latent
 
     def _get_cluster(self, n_jobs: int) -> np.ndarray:  # n_cells * n_models
         if self.cluster is None:
             utils.logger.info("Obtaining intrinsic clustering...")
-            self.cluster = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="threading"
-            )(joblib.delayed(model.clustering)(
-                self.ref
-            ) for model in self.models), axis=1)
+            self.cluster = np.stack(
+                joblib.Parallel(n_jobs=min(n_jobs, len(self)), backend="threading")(
+                    joblib.delayed(model.clustering)(self.ref) for model in self.models
+                ),
+                axis=1,
+            )
         return self.cluster
 
     def _get_posterior(
-            self, n_jobs: int, random_seed: int,
-            idx: typing.Optional[np.ndarray] = None
+        self, n_jobs: int, random_seed: int, idx: typing.Optional[np.ndarray] = None
     ) -> np.ndarray:  # n_cells * (n_models * n_posterior * latent_dim)
         if idx is None:
             idx = np.arange(self.ref.shape[0])
-        new_idx = np.intersect1d(np.unique(idx), np.where(np.vectorize(
-            lambda x: x is None
-        )(self.posterior))[0])
+        new_idx = np.intersect1d(
+            np.unique(idx),
+            np.where(np.vectorize(lambda x: x is None)(self.posterior))[0],
+        )
         if new_idx.size:
             utils.logger.info("Sampling from posteriors...")
             new_ref = self.ref[new_idx, :]
-            new_posterior = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="loky"
-            )(joblib.delayed(model.inference)(
-                new_ref, n_posterior=self.n_posterior, random_seed=random_seed
-            ) for model in self.models), axis=1)  # n_cells * n_models * n_posterior * latent_dim
+            new_posterior = np.stack(
+                joblib.Parallel(n_jobs=min(n_jobs, len(self)), backend="loky")(
+                    joblib.delayed(model.inference)(
+                        new_ref, n_posterior=self.n_posterior, random_seed=random_seed
+                    )
+                    for model in self.models
+                ),
+                axis=1,
+            )  # n_cells * n_models * n_posterior * latent_dim
             # NOTE: Slow discontigous memcopy here, but that's necessary since
             # we will be caching values by cells. It also makes values more
             # contiguous and faster to access in later cell-based operations.
@@ -540,15 +594,20 @@ class BLAST(object):
                 new_latent = self._get_latent(n_jobs)[new_idx]
                 self.posterior[new_idx] = joblib.Parallel(
                     n_jobs=n_jobs, backend="threading"
-                )(joblib.delayed(_compute_pcasd_across_models)(
-                    _new_latent, _new_posterior, **dist_kws
-                ) for _new_latent, _new_posterior in zip(new_latent, new_posterior))
+                )(
+                    joblib.delayed(_compute_pcasd_across_models)(
+                        _new_latent, _new_posterior, **dist_kws
+                    )
+                    for _new_latent, _new_posterior in zip(new_latent, new_posterior)
+                )
             else:
-                self.posterior[new_idx] = [item for item in new_posterior]  # NOTE: No memcopy here
+                self.posterior[new_idx] = [
+                    item for item in new_posterior
+                ]  # NOTE: No memcopy here
         return self.posterior[idx]
 
     def _get_nearest_neighbors(
-            self, n_jobs: int
+        self, n_jobs: int
     ) -> typing.List[sklearn.neighbors.NearestNeighbors]:  # n_models
         if self.nearest_neighbors is None:
             latent = self._get_latent(n_jobs).swapaxes(0, 1)
@@ -557,20 +616,19 @@ class BLAST(object):
             utils.logger.info("Fitting nearest neighbor trees...")
             self.nearest_neighbors = joblib.Parallel(
                 n_jobs=min(n_jobs, len(self)), backend="loky"
-            )(joblib.delayed(self._fit_nearest_neighbors)(
-                _latent
-            ) for _latent in latent)
+            )(
+                joblib.delayed(self._fit_nearest_neighbors)(_latent)
+                for _latent in latent
+            )
         return self.nearest_neighbors
 
     def _get_empirical(
-            self, n_jobs: int, random_seed: int
+        self, n_jobs: int, random_seed: int
     ) -> np.ndarray:  # n_models * [n_clusters * n_empirical]
         if self.empirical is None:
             utils.logger.info("Generating empirical null distributions...")
             if not self.cluster_empirical:
-                self.cluster = np.zeros((
-                    self.ref.shape[0], len(self)
-                ), dtype=int)
+                self.cluster = np.zeros((self.ref.shape[0], len(self)), dtype=int)
             latent = self._get_latent(n_jobs)
             cluster = self._get_cluster(n_jobs)
             rs = np.random.RandomState(random_seed)
@@ -585,46 +643,54 @@ class BLAST(object):
             for k in range(len(self)):  # model_idx
                 empirical = np.zeros((np.max(cluster[:, k]) + 1, self.n_empirical))
                 for c in np.unique(cluster[:, k]):  # cluster_idx
-                    fg = rs.choice(np.where(cluster[:, k] == c)[0], size=self.n_empirical)
+                    fg = rs.choice(
+                        np.where(cluster[:, k] == c)[0], size=self.n_empirical
+                    )
                     if self.distance_metric is ed:
-                        empirical[c] = np.sort(joblib.Parallel(
-                            n_jobs=n_jobs, backend="threading"
-                        )(joblib.delayed(self.distance_metric)(
-                            latent[fg[i]], latent[bg[i]]
-                        ) for i in range(self.n_empirical)))
+                        empirical[c] = np.sort(
+                            joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                                joblib.delayed(self.distance_metric)(
+                                    latent[fg[i]], latent[bg[i]]
+                                )
+                                for i in range(self.n_empirical)
+                            )
+                        )
                     else:
                         fg_posterior = self._get_posterior(n_jobs, random_seed, idx=fg)
-                        empirical[c] = np.sort(joblib.Parallel(
-                            n_jobs=n_jobs, backend="threading"
-                        )(joblib.delayed(self.distance_metric)(
-                            latent[fg[i], k], latent[bg[i], k],
-                            fg_posterior[i][k], bg_posterior[i][k],
-                            **dist_kws
-                        ) for i in range(self.n_empirical)))
+                        empirical[c] = np.sort(
+                            joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                                joblib.delayed(self.distance_metric)(
+                                    latent[fg[i], k],
+                                    latent[bg[i], k],
+                                    fg_posterior[i][k],
+                                    bg_posterior[i][k],
+                                    **dist_kws,
+                                )
+                                for i in range(self.n_empirical)
+                            )
+                        )
                 self.empirical.append(empirical)
         return self.empirical
 
     def _force_components(
-            self, n_jobs: int = config._USE_GLOBAL,
-            random_seed: int = config._USE_GLOBAL
+        self, n_jobs: int = config._USE_GLOBAL, random_seed: int = config._USE_GLOBAL
     ) -> None:
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
-        random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        random_seed = (
+            config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        )
         self._get_nearest_neighbors(n_jobs)
         if self.distance_metric is not ed:
             self._get_posterior(n_jobs, random_seed)
         self._get_empirical(n_jobs, random_seed)
 
     @staticmethod
-    def _fit_nearest_neighbors(
-            x: np.ndarray
-    ) -> sklearn.neighbors.NearestNeighbors:
+    def _fit_nearest_neighbors(x: np.ndarray) -> sklearn.neighbors.NearestNeighbors:
         return sklearn.neighbors.NearestNeighbors().fit(x)
 
     @staticmethod
     def _nearest_neighbor_search(
-            nn: sklearn.neighbors.NearestNeighbors,
-            query: np.ndarray, n_neighbors: int
+        nn: sklearn.neighbors.NearestNeighbors, query: np.ndarray, n_neighbors: int
     ) -> np.ndarray:
         return nn.kneighbors(query, n_neighbors=n_neighbors)[1]
 
@@ -636,8 +702,7 @@ class BLAST(object):
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
     def _empirical_pvalue(
-            hits: np.ndarray, dist: np.ndarray,
-            cluster: np.ndarray, empirical: np.ndarray
+        hits: np.ndarray, dist: np.ndarray, cluster: np.ndarray, empirical: np.ndarray
     ) -> np.ndarray:  # pragma: no cover
         r"""
         hits : n_hits
@@ -648,9 +713,10 @@ class BLAST(object):
         pval = np.empty(dist.shape)
         for i in range(dist.shape[1]):  # model index
             for j in range(dist.shape[0]):  # hit index
-                pval[j, i] = np.searchsorted(
-                    empirical[i][cluster[hits[j], i]], dist[j, i]
-                ) / empirical[i].shape[1]
+                pval[j, i] = (
+                    np.searchsorted(empirical[i][cluster[hits[j], i]], dist[j, i])
+                    / empirical[i].shape[1]
+                )
         return pval
 
     def save(self, path: str, only_used_genes: bool = True) -> None:
@@ -669,10 +735,13 @@ class BLAST(object):
         if self.ref is not None:
             if only_used_genes:
                 if "__libsize__" not in self.ref.obs.columns:
-                    data.compute_libsize(self.ref)  # So that align will still work properly
-                ref = data.select_vars(self.ref, np.unique(np.concatenate([
-                    model.genes for model in self.models
-                ])))
+                    data.compute_libsize(
+                        self.ref
+                    )  # So that align will still work properly
+                ref = data.select_vars(
+                    self.ref,
+                    np.unique(np.concatenate([model.genes for model in self.models])),
+                )
             ref.uns["distance_metric"] = self.distance_metric.__name__
             ref.uns["n_posterior"] = self.n_posterior
             ref.uns["n_empirical"] = self.n_empirical
@@ -683,8 +752,14 @@ class BLAST(object):
             if self.latent is not None:
                 ref.uns["cluster"] = self.cluster
             if self.empirical is not None:
-                ref.uns["empirical"] = {str(i): item for i, item in enumerate(self.empirical)}
-            ref.uns["posterior"] = {str(i): item for i, item in enumerate(self.posterior) if item is not None}
+                ref.uns["empirical"] = {
+                    str(i): item for i, item in enumerate(self.empirical)
+                }
+            ref.uns["posterior"] = {
+                str(i): item
+                for i, item in enumerate(self.posterior)
+                if item is not None
+            }
             ref.write(os.path.join(path, "ref.h5ad"))
         for i in range(len(self)):
             self.models[i].save(os.path.join(path, f"model_{i}"))
@@ -712,23 +787,29 @@ class BLAST(object):
         ref = anndata.read_h5ad(os.path.join(path, "ref.h5ad"))
         models = []
         model_paths = sorted(
-            os.path.join(path, d) for d in os.listdir(path)
-            if re.fullmatch(r'model_[0-9]+', d)
-            and os.path.isdir(os.path.join(path, d))
+            os.path.join(path, d)
+            for d in os.listdir(path)
+            if re.fullmatch(r"model_[0-9]+", d) and os.path.isdir(os.path.join(path, d))
         )
         for model_path in model_paths:
             models.append(directi.DIRECTi.load(model_path, _mode=mode))
         blast = cls(
-            models, ref, ref.uns["distance_metric"], ref.uns["n_posterior"],
-            ref.uns["n_empirical"], ref.uns["cluster_empirical"],
+            models,
+            ref,
+            ref.uns["distance_metric"],
+            ref.uns["n_posterior"],
+            ref.uns["n_empirical"],
+            ref.uns["cluster_empirical"],
             None if ref.uns["eps"] == "None" else ref.uns["eps"],
-            force_components=False
+            force_components=False,
         )
         blast.latent = blast.ref.uns["latent"] if "latent" in blast.ref.uns else None
         blast.cluster = blast.ref.uns["cluster"] if "latent" in blast.ref.uns else None
-        blast.empirical = [
-            blast.ref.uns["empirical"][str(i)] for i in range(len(blast))
-        ] if "empirical" in blast.ref.uns else None
+        blast.empirical = (
+            [blast.ref.uns["empirical"][str(i)] for i in range(len(blast))]
+            if "empirical" in blast.ref.uns
+            else None
+        )
         if "posterior" in blast.ref.uns:
             for i in range(ref.shape[0]):
                 if str(i) in blast.ref.uns["posterior"]:
@@ -737,10 +818,12 @@ class BLAST(object):
         return blast
 
     def query(
-            self, query: anndata.AnnData, n_neighbors: int = 5,
-            store_dataset: bool = False,
-            n_jobs: int = config._USE_GLOBAL,
-            random_seed: int = config._USE_GLOBAL
+        self,
+        query: anndata.AnnData,
+        n_neighbors: int = 5,
+        store_dataset: bool = False,
+        n_jobs: int = config._USE_GLOBAL,
+        random_seed: int = config._USE_GLOBAL,
     ) -> "Hits":
         r"""
         BLAST query
@@ -770,24 +853,30 @@ class BLAST(object):
             Query hits
         """
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
-        random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        random_seed = (
+            config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        )
 
         utils.logger.info("Projecting to latent space...")
         query_latent = joblib.Parallel(
             n_jobs=min(n_jobs, len(self)), backend="threading"
-        )(joblib.delayed(model.inference)(
-            query
-        ) for model in self.models)  # n_models * [n_cells * latent_dim]
+        )(
+            joblib.delayed(model.inference)(query) for model in self.models
+        )  # n_models * [n_cells * latent_dim]
 
         utils.logger.info("Doing nearest neighbor search...")
         nearest_neighbors = self._get_nearest_neighbors(n_jobs)
-        nni = np.stack(joblib.Parallel(
-            n_jobs=min(n_jobs, len(self)), backend="threading"
-        )(joblib.delayed(self._nearest_neighbor_search)(
-            _nearest_neighbor, _query_latent, n_neighbors
-        ) for _nearest_neighbor, _query_latent in zip(
-            nearest_neighbors, query_latent
-        )), axis=2)  # n_cells * n_neighbors * n_models
+        nni = np.stack(
+            joblib.Parallel(n_jobs=min(n_jobs, len(self)), backend="threading")(
+                joblib.delayed(self._nearest_neighbor_search)(
+                    _nearest_neighbor, _query_latent, n_neighbors
+                )
+                for _nearest_neighbor, _query_latent in zip(
+                    nearest_neighbors, query_latent
+                )
+            ),
+            axis=2,
+        )  # n_cells * n_neighbors * n_models
 
         utils.logger.info("Merging hits across models...")
         hits = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
@@ -803,51 +892,66 @@ class BLAST(object):
             dist = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
                 joblib.delayed(_hit_ed_across_models)(
                     query_latent[i], ref_latent[hits[i]]
-                ) for i in range(len(hits))
+                )
+                for i in range(len(hits))
             )  # list of n_hits * n_models
         else:
             utils.logger.info("Computing posterior distribution distances...")
-            query_posterior = np.stack(joblib.Parallel(
-                n_jobs=min(n_jobs, len(self)), backend="loky"
-            )(joblib.delayed(model.inference)(
-                query, n_posterior=self.n_posterior, random_seed=random_seed
-            ) for model in self.models), axis=1)  # n_cells * n_models * n_posterior_samples * latent_dim
-            ref_posterior = np.stack(self._get_posterior(
-                n_jobs, random_seed, idx=hitsu
-            ))  # n_cells * n_models * n_posterior_samples * latent_dim
+            query_posterior = np.stack(
+                joblib.Parallel(n_jobs=min(n_jobs, len(self)), backend="loky")(
+                    joblib.delayed(model.inference)(
+                        query, n_posterior=self.n_posterior, random_seed=random_seed
+                    )
+                    for model in self.models
+                ),
+                axis=1,
+            )  # n_cells * n_models * n_posterior_samples * latent_dim
+            ref_posterior = np.stack(
+                self._get_posterior(n_jobs, random_seed, idx=hitsu)
+            )  # n_cells * n_models * n_posterior_samples * latent_dim
             distance_metric = DISTANCE_METRIC_ACROSS_MODELS[self.distance_metric]
             dist_kws = {"eps": self.eps} if self.eps is not None else {}
             dist = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
                 joblib.delayed(distance_metric)(
-                    query_latent[i], ref_latent[hits[i]],
-                    query_posterior[i], ref_posterior[hitsi[i]], **dist_kws
-                ) for i in range(len(hits))
+                    query_latent[i],
+                    ref_latent[hits[i]],
+                    query_posterior[i],
+                    ref_posterior[hitsi[i]],
+                    **dist_kws,
+                )
+                for i in range(len(hits))
             )  # list of n_hits * n_models
 
         utils.logger.info("Computing empirical p-values...")
         empirical = self._get_empirical(n_jobs, random_seed)
         cluster = self._get_cluster(n_jobs)
-        pval = joblib.Parallel(
-            n_jobs=n_jobs, backend="threading"
-        )(joblib.delayed(self._empirical_pvalue)(
-            _hits, _dist, cluster, empirical
-        ) for _hits, _dist in zip(hits, dist))  # list of n_hits * n_models
+        pval = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+            joblib.delayed(self._empirical_pvalue)(_hits, _dist, cluster, empirical)
+            for _hits, _dist in zip(hits, dist)
+        )  # list of n_hits * n_models
 
         return Hits(
-            self, hits, dist, pval,
-            query if store_dataset else anndata.AnnData(
+            self,
+            hits,
+            dist,
+            pval,
+            query
+            if store_dataset
+            else anndata.AnnData(
                 X=scipy.sparse.csr_matrix((query.shape[0], 0)),
                 obs=pd.DataFrame(index=query.obs.index),
-                var=pd.DataFrame(), uns={}
-            )
+                var=pd.DataFrame(),
+                uns={},
+            ),
         )
 
     def align(
-            self, query: typing.Union[
-                anndata.AnnData, typing.Mapping[str, anndata.AnnData]
-            ], n_jobs: int = config._USE_GLOBAL,
-            random_seed: int = config._USE_GLOBAL,
-            path: typing.Optional[str] = None, **kwargs
+        self,
+        query: typing.Union[anndata.AnnData, typing.Mapping[str, anndata.AnnData]],
+        n_jobs: int = config._USE_GLOBAL,
+        random_seed: int = config._USE_GLOBAL,
+        path: typing.Optional[str] = None,
+        **kwargs,
     ) -> "BLAST":
         r"""
         Align internal DIRECTi models with query datasets (fine tuning).
@@ -876,29 +980,39 @@ class BLAST(object):
         blast
             A new BLAST object with aligned internal models.
         """
-        if any(model._mode == directi._TEST for model in self.models):  # pragma: no cover
+        if any(
+            model._mode == directi._TEST for model in self.models
+        ):  # pragma: no cover
             raise Exception("Align not available!")
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
-        random_seed = config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        random_seed = (
+            config.RANDOM_SEED if random_seed == config._USE_GLOBAL else random_seed
+        )
         path = path or tempfile.mkdtemp()
 
-        aligned_models = joblib.Parallel(
-            n_jobs=n_jobs, backend="threading"
-        )(
+        aligned_models = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
             joblib.delayed(directi.align_DIRECTi)(
-                self.models[i], self.ref, query, random_seed=random_seed,
-                path=os.path.join(path, f"aligned_model_{i}"), **kwargs
-            ) for i in range(len(self))
+                self.models[i],
+                self.ref,
+                query,
+                random_seed=random_seed,
+                path=os.path.join(path, f"aligned_model_{i}"),
+                **kwargs,
+            )
+            for i in range(len(self))
         )
         return BLAST(
-            aligned_models, self.ref, distance_metric=self.distance_metric,
-            n_posterior=self.n_posterior, n_empirical=self.n_empirical,
-            cluster_empirical=self.cluster_empirical, eps=self.eps
+            aligned_models,
+            self.ref,
+            distance_metric=self.distance_metric,
+            n_posterior=self.n_posterior,
+            n_empirical=self.n_empirical,
+            cluster_empirical=self.cluster_empirical,
+            eps=self.eps,
         )
 
 
 class Hits(object):
-
     r"""
     BLAST hits
 
@@ -929,33 +1043,39 @@ class Hits(object):
     FILTER_BY_PVAL = 1
 
     def __init__(
-            self, blast: BLAST,
-            hits: typing.List[np.ndarray],
-            dist: typing.List[np.ndarray],
-            pval: typing.List[np.ndarray],
-            query: anndata.AnnData
+        self,
+        blast: BLAST,
+        hits: typing.List[np.ndarray],
+        dist: typing.List[np.ndarray],
+        pval: typing.List[np.ndarray],
+        query: anndata.AnnData,
     ) -> None:
         self.blast = blast
         self.hits = np.asarray(hits, dtype=object)
         self.dist = np.asarray(dist, dtype=object)
         self.pval = np.asarray(pval, dtype=object)
         self.query = query
-        if not self.hits.shape[0] == self.dist.shape[0] == \
-                self.pval.shape[0] == self.query.shape[0]:
+        if (
+            not self.hits.shape[0]
+            == self.dist.shape[0]
+            == self.pval.shape[0]
+            == self.query.shape[0]
+        ):
             raise ValueError("Inconsistent shape!")
 
     def __len__(self) -> int:
         return self.query.shape[0]
 
     def __iter__(self):
-        for idx, (_hits, _dist, _pval) in enumerate(zip(self.hits, self.dist, self.pval)):
+        for idx, (_hits, _dist, _pval) in enumerate(
+            zip(self.hits, self.dist, self.pval)
+        ):
             yield Hits(self.blast, [_hits], [_dist], [_pval], self.query[idx, :])
 
     def __getitem__(self, s):
         s = [s] if isinstance(s, (int, np.integer)) else s
         return Hits(
-            self.blast, self.hits[s], self.dist[s], self.pval[s],
-            self.query[s, :]
+            self.blast, self.hits[s], self.dist[s], self.pval[s], self.query[s, :]
         )
 
     def to_data_frames(self) -> typing.Mapping[str, pd.DataFrame]:
@@ -979,7 +1099,7 @@ class Hits(object):
         return df_dict
 
     def reconcile_models(
-            self, dist_method: str = "mean", pval_method: str = "gmean"
+        self, dist_method: str = "mean", pval_method: str = "gmean"
     ) -> "Hits":
         r"""
         Integrate model-specific distances and empirical p-values.
@@ -1007,8 +1127,12 @@ class Hits(object):
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
     def _filter_hits(
-            hits: np.ndarray, dist: np.ndarray, pval: np.ndarray,
-            by: int, cutoff: float, model_tolerance: int
+        hits: np.ndarray,
+        dist: np.ndarray,
+        pval: np.ndarray,
+        by: int,
+        cutoff: float,
+        model_tolerance: int,
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:  # pragma: no cover
         r"""
         hits : n_hits
@@ -1024,8 +1148,7 @@ class Hits(object):
     @staticmethod
     @numba.jit(nopython=True, nogil=True, cache=True)
     def _filter_reconciled_hits(
-            hits: np.ndarray, dist: np.ndarray, pval: np.ndarray,
-            by: int, cutoff: float
+        hits: np.ndarray, dist: np.ndarray, pval: np.ndarray, by: int, cutoff: float
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:  # pragma: no cover
         r"""
         hits : n_hits
@@ -1039,8 +1162,11 @@ class Hits(object):
         return hits[hit_mask], dist[hit_mask], pval[hit_mask]
 
     def filter(
-            self, by: str = "pval", cutoff: float = 0.05,
-            model_tolerance: int = 0, n_jobs: int = 1
+        self,
+        by: str = "pval",
+        cutoff: float = 0.05,
+        model_tolerance: int = 0,
+        n_jobs: int = 1,
     ) -> "Hits":
         r"""
         Filter hits by posterior distance or p-value
@@ -1070,26 +1196,37 @@ class Hits(object):
         else:  # by == "dist"
             by = Hits.FILTER_BY_DIST
         if self.dist[0].ndim == 1:
-            hits, dist, pval = [_ for _ in zip(*joblib.Parallel(
-                n_jobs=n_jobs, backend="threading"
-            )(joblib.delayed(self._filter_reconciled_hits)(
-                _hits, _dist, _pval, by, cutoff
-            ) for _hits, _dist, _pval in zip(
-                self.hits, self.dist, self.pval
-            )))]
+            hits, dist, pval = [
+                _
+                for _ in zip(
+                    *joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                        joblib.delayed(self._filter_reconciled_hits)(
+                            _hits, _dist, _pval, by, cutoff
+                        )
+                        for _hits, _dist, _pval in zip(self.hits, self.dist, self.pval)
+                    )
+                )
+            ]
         else:
-            hits, dist, pval = [_ for _ in zip(*joblib.Parallel(
-                n_jobs=n_jobs, backend="threading"
-            )(joblib.delayed(self._filter_hits)(
-                _hits, _dist, _pval, by, cutoff, model_tolerance
-            ) for _hits, _dist, _pval in zip(
-                self.hits, self.dist, self.pval
-            )))]
+            hits, dist, pval = [
+                _
+                for _ in zip(
+                    *joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                        joblib.delayed(self._filter_hits)(
+                            _hits, _dist, _pval, by, cutoff, model_tolerance
+                        )
+                        for _hits, _dist, _pval in zip(self.hits, self.dist, self.pval)
+                    )
+                )
+            ]
         return Hits(self.blast, hits, dist, pval, self.query)
 
     def annotate(
-            self, field: str, min_hits: int = 2,
-            majority_threshold: float = 0.5, return_evidence: bool = False
+        self,
+        field: str,
+        min_hits: int = 2,
+        majority_threshold: float = 0.5,
+        return_evidence: bool = False,
     ) -> pd.DataFrame:
         r"""
         Annotate query cells based on existing annotations of hit cells
@@ -1122,8 +1259,9 @@ class Hits(object):
         """
         ref = self.blast.ref.obs[field].to_numpy().ravel()
         n_hits = np.repeat(0, len(self.hits))
-        if np.issubdtype(ref.dtype.type, np.character) or \
-                np.issubdtype(ref.dtype.type, np.object_):
+        if np.issubdtype(ref.dtype.type, np.character) or np.issubdtype(
+            ref.dtype.type, np.object_
+        ):
             prediction = np.repeat("rejected", len(self.hits)).astype(object)
             majority_frac = np.repeat(np.nan, len(self.hits))
             for i, _hits in enumerate(self.hits):
@@ -1162,9 +1300,12 @@ class Hits(object):
         return pd.DataFrame(result, index=self.query.obs_names)
 
     def blast2co(
-            self, cl_dag: utils.CellTypeDAG,
-            cl_field: str = "cell_ontology_class",
-            min_hits: int = 2, thresh: float = 0.5, min_path: int = 4
+        self,
+        cl_dag: utils.CellTypeDAG,
+        cl_field: str = "cell_ontology_class",
+        min_hits: int = 2,
+        thresh: float = 0.5,
+        min_path: int = 4,
     ) -> pd.DataFrame:
         r"""
         Annotate query cells based on existing annotations of hit cells
@@ -1208,7 +1349,8 @@ class Hits(object):
                 cl_dag.value_set(cl, np.sum(1 - _pval[hits == cl]) / np.sum(1 - _pval))
             cl_dag.value_update()
             leaves = cl_dag.best_leaves(
-                thresh=thresh, min_path=min_path, retrieve=cl_field)
+                thresh=thresh, min_path=min_path, retrieve=cl_field
+            )
             if len(leaves) == 1:
                 prediction[i] = leaves[0]
             elif len(leaves) > 1:
@@ -1228,8 +1370,11 @@ class Hits(object):
         raise ValueError("Unknown method!")  # pragma: no cover
 
     def gene_gradient(
-            self, eval_point: str = "query", normalize_deviation: bool = True,
-            avg_models: bool = True, n_jobs: int = config._USE_GLOBAL
+        self,
+        eval_point: str = "query",
+        normalize_deviation: bool = True,
+        avg_models: bool = True,
+        n_jobs: int = config._USE_GLOBAL,
     ) -> typing.List[np.ndarray]:
         r"""
         Compute gene-wise gradient for each pair of query-hit cells
@@ -1264,50 +1409,49 @@ class Hits(object):
         n_jobs = config.N_JOBS if n_jobs == config._USE_GLOBAL else n_jobs
         if self.query.shape[1] == 0:
             raise RuntimeError(
-                "No query data available! Please set \"store_dataset\" to True "
+                'No query data available! Please set "store_dataset" to True '
                 "when calling BLAST.query()"
             )
 
         ref_idx = np.concatenate(self.hits)
-        query_idx = np.concatenate([
-            idx * np.ones_like(_hits)
-            for idx, _hits in enumerate(self.hits)
-        ])
+        query_idx = np.concatenate(
+            [idx * np.ones_like(_hits) for idx, _hits in enumerate(self.hits)]
+        )
         ref = self.blast.ref[ref_idx, :]
         query = self.query[query_idx, :]
 
         query_latent = joblib.Parallel(
             n_jobs=min(n_jobs, len(self)), backend="threading"
-        )(joblib.delayed(model.inference)(
-            self.query
-        ) for model in self.blast.models)
-        query_latent = np.stack(query_latent)[:, query_idx, :]  # n_models * sum(n_hits) * latent_dim
+        )(joblib.delayed(model.inference)(self.query) for model in self.blast.models)
+        query_latent = np.stack(query_latent)[
+            :, query_idx, :
+        ]  # n_models * sum(n_hits) * latent_dim
 
         ref_latent = self.blast._get_latent(n_jobs)  # n_cells * n_models * latent_dim
-        ref_latent = ref_latent[ref_idx].swapaxes(0, 1)  # n_models * sum(n_hits) * latent_dim
+        ref_latent = ref_latent[ref_idx].swapaxes(
+            0, 1
+        )  # n_models * sum(n_hits) * latent_dim
 
         deviation = query_latent - ref_latent  # n_models * sum(n_hits) * latent_dim
         if normalize_deviation:
             deviation /= np.linalg.norm(deviation, axis=2, keepdims=True)
 
         if eval_point in ("ref", "both"):
-            gene_dev_ref = joblib.Parallel(
-                n_jobs=n_jobs, backend="threading"
-            )(joblib.delayed(model.gene_grad)(
-                ref, latent_grad=_deviation
-            ) for model, _deviation in zip(
-                self.blast.models, deviation
-            ))  # n_models * [sum(n_hits) * n_genes]
-            gene_dev_ref = np.stack(gene_dev_ref, axis=1)  # sum(n_hits) * n_models * n_genes
+            gene_dev_ref = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                joblib.delayed(model.gene_grad)(ref, latent_grad=_deviation)
+                for model, _deviation in zip(self.blast.models, deviation)
+            )  # n_models * [sum(n_hits) * n_genes]
+            gene_dev_ref = np.stack(
+                gene_dev_ref, axis=1
+            )  # sum(n_hits) * n_models * n_genes
         if eval_point in ("query", "both"):
-            gene_dev_query = joblib.Parallel(
-                n_jobs=n_jobs, backend="threading"
-            )(joblib.delayed(model.gene_grad)(
-                query, latent_grad=_deviation
-            ) for model, _deviation in zip(
-                self.blast.models, deviation
-            ))  # n_models * [sum(n_hits) * n_genes]
-            gene_dev_query = np.stack(gene_dev_query, axis=1)  # sum(n_hits) * n_models * n_genes
+            gene_dev_query = joblib.Parallel(n_jobs=n_jobs, backend="threading")(
+                joblib.delayed(model.gene_grad)(query, latent_grad=_deviation)
+                for model, _deviation in zip(self.blast.models, deviation)
+            )  # n_models * [sum(n_hits) * n_genes]
+            gene_dev_query = np.stack(
+                gene_dev_query, axis=1
+            )  # sum(n_hits) * n_models * n_genes
 
         if eval_point == "ref":
             gene_dev = gene_dev_ref
@@ -1320,15 +1464,22 @@ class Hits(object):
             gene_dev = np.mean(gene_dev, axis=1)
 
         split_idx = np.cumsum([_hits.size for _hits in self.hits])[:-1]
-        gene_dev = np.split(gene_dev, split_idx)  # n_queries * [n_hits * <n_models> * n_genes]
+        gene_dev = np.split(
+            gene_dev, split_idx
+        )  # n_queries * [n_hits * <n_models> * n_genes]
         return gene_dev
 
 
 def sankey(
-        query: np.ndarray, ref: np.ndarray, title: str = "Sankey",
-        width: int = 500, height: int = 500, tint_cutoff: int = 1,
-        font: str = "Arial", font_size: float = 10.0,
-        suppress_plot: bool = False
+    query: np.ndarray,
+    ref: np.ndarray,
+    title: str = "Sankey",
+    width: int = 500,
+    height: int = 500,
+    tint_cutoff: int = 1,
+    font: str = "Arial",
+    font_size: float = 10.0,
+    suppress_plot: bool = False,
 ) -> dict:  # pragma: no cover
     r"""
     Make a sankey diagram of query-reference mapping (only works in
@@ -1373,40 +1524,27 @@ def sankey(
         node=dict(
             pad=15,
             thickness=20,
-            line=dict(
-                color="black",
-                width=0.5
-            ),
-            label=np.concatenate([
-                query_c, ref_c
-            ], axis=0),
-            color=["#E64B35"] * len(query_c) +
-            ["#4EBBD5"] * len(ref_c)
+            line=dict(color="black", width=0.5),
+            label=np.concatenate([query_c, ref_c], axis=0),
+            color=["#E64B35"] * len(query_c) + ["#4EBBD5"] * len(ref_c),
         ),
         link=dict(
             source=query_i.tolist(),
-            target=(
-                ref_i + len(query_c)
-            ).tolist(),
+            target=(ref_i + len(query_c)).tolist(),
             value=cf["count"].tolist(),
-            color=np.vectorize(
-                lambda x: "#F0F0F0" if x <= tint_cutoff else "#CCCCCC"
-            )(cf["count"])
-        )
+            color=np.vectorize(lambda x: "#F0F0F0" if x <= tint_cutoff else "#CCCCCC")(
+                cf["count"]
+            ),
+        ),
     )
     sankey_layout = dict(
-        title=title,
-        width=width,
-        height=height,
-        font=dict(
-            family=font,
-            size=font_size
-        )
+        title=title, width=width, height=height, font=dict(family=font, size=font_size)
     )
 
     fig = dict(data=[sankey_data], layout=sankey_layout)
     if not suppress_plot:
         import plotly.offline
+
         plotly.offline.init_notebook_mode()
         plotly.offline.iplot(fig, validate=False)
     return fig
