@@ -277,10 +277,8 @@ class MNNAdversarial(Adversarial):
 
         b = feed_dict[self.name]
         mask = b.sum(dim = 1) > 0
-        mnn_mask = torch.zeros(b.shape[0]) > 0
+        mnn_mask = torch.zeros(b.shape[0], device=config.DEVICE) > 0
         masked_mnn_mask = mnn_mask[mask]
-        mnn_mask = mnn_mask.to(config.DEVICE)
-        masked_mnn_mask = masked_mnn_mask.to(config.DEVICE)
         barg = b[mask].argmax(dim = 1)
         x_grouping = []
         for i in range(b.shape[1]):
