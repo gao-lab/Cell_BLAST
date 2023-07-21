@@ -35,7 +35,7 @@ dependencies = [
     "tqdm>=4.12.0",  # deprecation warning in the sys module
     "pandas>=0.21.0",  # optional, anndata requirement
     "h5py>=2.7.0",  # optional, anndata requirement
-    "python-igraph>=0.7.1",  # only version on conda at the time of packaging
+    "igraph>=0.7.1",
     "pronto>=0.10.2,<=0.12.2",  # minimal version supporting python 3.6
     "seaborn>=0.9.0", # minimal version supporting sns.scatterplot
     "umap-learn>=0.2.1",  # scipy.sparse.csgraph issue
