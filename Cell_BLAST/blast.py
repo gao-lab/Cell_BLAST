@@ -49,7 +49,11 @@ def _energy_distance_impl(x: np.ndarray, y: np.ndarray):  # pragma: no cover
     scipy.stats.wasserstein_distance, jit_options={"nogil": True, "cache": True}
 )
 def _wasserstein_distance(x: np.ndarray, y: np.ndarray):  # pragma: no cover
-    if x == numba.float32[::1] and y == numba.float32[::1]:
+    if (
+        x == numba.float32[::1] and y == numba.float32[::1]
+    ) or (
+        x == numba.float64[::1] and y == numba.float64[::1]
+    ):
         return _wasserstein_distance_impl
 
 

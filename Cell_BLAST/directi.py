@@ -1134,9 +1134,7 @@ def align_DIRECTi(
     adatas = {"__original__": original_adata, **new_adatas}
     for key, val in adatas.items():
         val.obs["__align__"] = key
-    adata = ad.AnnData.concatenate(
-        *adatas.values(), join="outer", batch_key=None, fill_value=0
-    )
+    adata = ad.concat(adatas, join="outer", fill_value=0)
 
     data_dict = OrderedDict(
         library_size=adata.obs["__libsize__"].to_numpy().reshape((-1, 1)),
