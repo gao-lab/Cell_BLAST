@@ -8,10 +8,10 @@ version = "0.5.0"
 description = "Single-cell transcriptome querying tool"
 readme = "README.md"
 requires-python = ">=3.6"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 authors = [
-    {name = "Zhi-Jie Cao", email = "caozj@mail.cbi.pku.edu.cn"},
-    {name = "Runwei Lu", email = "lurw2000@126.com"}
+    { name = "Zhi-Jie Cao", email = "caozj@mail.cbi.pku.edu.cn" },
+    { name = "Runwei Lu", email = "lurw2000@126.com" },
 ]
 keywords = ["bioinformatics", "deep-learning", "single-cell"]
 classifiers = [
@@ -25,34 +25,34 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "Topic :: Scientific/Engineering :: Bio-Informatics"
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "numba>=0.39.0",  # minimal version supporting np.unique
-    "scipy>=1.0.0",  # minimal version supporting scipy.stats.energy_distance
-    "joblib>=0.12.0",  # minimal version supporting locky backend
-    "scikit-learn>=0.17.0",  # normalization issue
-    "tqdm>=4.12.0",  # deprecation warning in the sys module
-    "pandas>=0.21.0",  # optional, anndata requirement
-    "h5py>=2.7.0",  # optional, anndata requirement
+    "numba>=0.39.0",           # minimal version supporting np.unique
+    "scipy>=1.0.0",            # minimal version supporting scipy.stats.energy_distance
+    "joblib>=0.12.0",          # minimal version supporting locky backend
+    "scikit-learn>=0.17.0",    # normalization issue
+    "tqdm>=4.12.0",            # deprecation warning in the sys module
+    "pandas>=0.21.0",          # optional, anndata requirement
+    "h5py>=2.7.0",             # optional, anndata requirement
     "igraph>=0.7.1",
-    "pronto>=0.10.2,<=0.12.2",  # minimal version supporting python 3.6
-    "seaborn>=0.9.0", # minimal version supporting sns.scatterplot
-    "umap-learn>=0.2.1",  # scipy.sparse.csgraph issue
-    "anndata>=0.6.14",  # minimal version supporting write_h5ad
-    "loompy>=2.0.6",  # minimal version to pass tests
-    "statsmodels>=0.8.0",  # python and numpy version compatibility
+    "pronto>=0.10.2,<=0.12.2", # minimal version supporting python 3.6
+    "seaborn>=0.9.0",          # minimal version supporting sns.scatterplot
+    "umap-learn>=0.2.1",       # scipy.sparse.csgraph issue
+    "anndata>=0.6.14",         # minimal version supporting write_h5ad
+    "loompy>=2.0.6",           # minimal version to pass tests
+    "statsmodels>=0.8.0",      # python and numpy version compatibility
     "plotly>=5.8.2",
     "torch>=1.7.1",
     "tensorboard>=2.9.1",
-    "scanpy>=1.9.0", # optional, weighting strategy requirement
-    "leidenalg>=0.8.10", # optional, weighting strategy requirement
-    "pynvml>=8.0.1"
+    "scanpy>=1.9.0",           # optional, weighting strategy requirement
+    "leidenalg>=0.8.10",       # optional, weighting strategy requirement
+    "pynvml>=8.0.1",
 ]
 
 [project.optional-dependencies]
 doc = [
-    "sphinx",
+    "sphinx<7",
     "sphinx-autodoc-typehints",
     "sphinx-copybutton",
     "nbsphinx",
