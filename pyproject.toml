@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "Cell_BLAST"
-version = "0.5.0"
+version = "0.5.1"
 description = "Single-cell transcriptome querying tool"
 readme = "README.md"
 requires-python = ">=3.6"
@@ -63,7 +63,7 @@ doc = [
 ]
 
 [project.urls]
-Github = "https://github.com/gao-lab/Cell_BLAST-dev"
+Github = "https://github.com/gao-lab/Cell_BLAST"
 
 [tool.flit.sdist]
 exclude = [".*", "D*", "d*", "N*", "t*", "e*"]
